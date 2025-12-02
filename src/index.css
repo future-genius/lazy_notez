@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Poppins:wght@600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-gray-800 bg-white font-sans;
+  }
+}
+
+@layer components {
+  .container {
+    @apply max-w-7xl mx-auto;
+  }
+  
+  /* 3D Transform Utilities */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-style-preserve-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .rotate-y-12 {
+    transform: rotateY(12deg);
+  }
+  
+  .rotate-x-6 {
+    transform: rotateX(6deg);
+  }
+  
+  .translate-z-0 {
+    transform: translateZ(0);
+  }
+  
+  .translate-z-\[-20px\] {
+    transform: translateZ(-20px);
+  }
+}
+
+/* Hamburger Menu Styles */
+.checkbox {
+  @apply absolute opacity-0 cursor-pointer top-4 left-4 z-50;
+  width: 40px;
+  height: 40px;
+}
+
+.hamburger-lines {
+  @apply flex flex-col gap-1.5 justify-center items-center cursor-pointer absolute top-4 left-4 z-40;
+  width: 40px;
+  height: 40px;
+}
+
+.line {
+  @apply block h-0.5 w-6 bg-white transition-all duration-300;
+}
+
+.line1-checked {
+  @apply rotate-45 translate-y-2;
+}
+
+.line2-checked {
+  @apply opacity-0;
+}
+
+.line3-checked {
+  @apply -rotate-45 -translate-y-2;
+}
+
+/* Design system utilities */
+@layer utilities {
+  .fade-in {
+    animation: fade-in 320ms ease-out both;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 transition transform-gpu;
+  }
+
+  .card {
+    @apply bg-white rounded-xl p-6 shadow-card border border-gray-100;
+  }
+
+  .fab {
+    @apply fixed right-6 bottom-6 bg-primary-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform;
+  }
+
+  .grid-responsive {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .grid-responsive {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .grid-responsive {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .grid-responsive {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+}

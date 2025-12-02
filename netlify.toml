@@ -1,0 +1,44 @@
+# Netlify configuration for LazyNotez frontend
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  
+[build.environment]
+  # Frontend build environment variables
+  NODE_VERSION = "18"
+  
+[[redirects]]
+  # React Router SPA redirect - send all non-file requests to index.html
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  # Security headers
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+[[headers]]
+  # Cache control for assets
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  # Don't cache HTML files (get latest app)
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Proxy API requests to backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://your-backend-url/api/:splat"
+  status = 200
+  force = false
