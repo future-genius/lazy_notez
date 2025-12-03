@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, Users, FileText, MessageSquare, Settings, LogOut, Bell, Search, Menu, Edit2, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import Feedback from './Feedback';
 import { useNavigate } from 'react-router-dom';
 
 interface AdminUser {
@@ -118,6 +119,7 @@ export default function AdminDashboard() {
     { id: 'users', label: 'Users Management', icon: Users },
     { id: 'resources', label: 'Resources', icon: FileText },
     { id: 'communities', label: 'Communities', icon: MessageSquare },
+    { id: 'feedback', label: 'Feedback', icon: Bell },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -142,6 +144,8 @@ export default function AdminDashboard() {
         );
       case 'resources':
         return <ResourcesTab />;
+      case 'feedback':
+        return <Feedback />;
       case 'communities':
         return <CommunitiesTab />;
       case 'settings':
@@ -234,6 +238,8 @@ function DashboardTab({ users }: { users: AdminUser[] }) {
   const activeUsers = users.filter(u => u.status === 'active').length;
   const adminUsers = users.filter(u => u.role === 'admin').length;
   const regularUsers = users.filter(u => u.role === 'user').length;
+  const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+  const feedbackCount = feedbacks.length;
 
   return (
     <div className="space-y-8">
@@ -243,7 +249,7 @@ function DashboardTab({ users }: { users: AdminUser[] }) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid md:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-5 gap-6">
         <div className="p-8 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -283,6 +289,15 @@ function DashboardTab({ users }: { users: AdminUser[] }) {
             <Users className="w-12 h-12 text-orange-400 opacity-50" />
           </div>
         </div>
+                <div className="p-8 rounded-2xl bg-gradient-to-br from-teal-500/20 to-teal-600/10 border border-teal-500/30 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-300 text-sm font-semibold">Feedbacks</p>
+                      <p className="text-4xl font-bold mt-3">{feedbackCount}</p>
+                    </div>
+                    <Bell className="w-12 h-12 text-teal-400 opacity-50" />
+                  </div>
+                </div>
       </div>
 
       {/* Quick Info */}
