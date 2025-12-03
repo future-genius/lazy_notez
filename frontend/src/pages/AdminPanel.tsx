@@ -3,6 +3,7 @@ import api from '../lib/api'
 import { useAppSelector } from '../store/hooks'
 import { Alert, LoadingSpinner } from '../components/Common'
 import { Trash2, Shield, Activity, FileText } from 'lucide-react'
+import { io as createSocket } from 'socket.io-client'
 
 interface User {
   _id: string
@@ -50,6 +51,30 @@ const AdminPanel: React.FC = () => {
 
   useEffect(() => {
     fetchAllData()
+  }, [])
+
+  // Real-time updates: listen for newly created users
+  useEffect(() => {
+    const apiBase = (import.meta.env.VITE_API_BASE || 'http://localhost:4000/api').replace(/\/api\/?$/i, '')
+    const socket = createSocket(apiBase, { withCredentials: true })
+
+    socket.on('connect', () => {
+      // console.log('Admin socket connected', socket.id)
+    })
+
+    socket.on('user.created', (newUser: any) => {
+      // Prepend the user to the list and notify admin
+      setUsers(prev => [newUser, ...prev])
+      setSuccess('New user registered')
+    })
+
+    socket.on('disconnect', () => {
+      // console.log('Admin socket disconnected')
+    })
+
+    return () => {
+      socket.disconnect()
+    }
   }, [])
 
   const fetchAllData = async () => {
@@ -219,6 +244,17 @@ const AdminPanel: React.FC = () => {
             {/* Users Tab */}
             {activeTab === 'users' && (
               <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+                  <h2 className="text-lg font-semibold text-gray-800">Users</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={fetchAllData}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-100 border-b">

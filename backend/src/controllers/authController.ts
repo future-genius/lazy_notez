@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import sanitizeHtml from 'sanitize-html';
 import User from '../models/User';
 import ActivityLog from '../models/ActivityLog';
+import { getIO } from '../utils/socket';
 import { blacklistToken, isTokenBlacklisted } from '../utils/redis';
 import { AppError } from '../utils/errors';
 
@@ -39,6 +40,26 @@ export const register = async (req: Request, res: Response) => {
     await user.save();
 
     await ActivityLog.create({ user: user._id, action: 'register', ip: req.ip });
+
+    // Emit real-time event for new user registration
+    try {
+      const io = getIO();
+      if (io) {
+        const payload = {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+          createdAt: user.createdAt
+        };
+        io.emit('user.created', payload);
+      }
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to emit user.created event', e);
+    }
 
     const accessToken = signAccessToken(user._id.toString());
     const refreshToken = signRefreshToken(user._id.toString());
