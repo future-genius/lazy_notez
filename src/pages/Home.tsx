@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code } from 'lucide-react';
+import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import FAB from '../components/ui/FAB';
 
@@ -93,7 +93,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <div className="mb-6 flex items-center gap-4">
-                  <img src="/images/lazy-notez-logo.png" alt="Lazy Notez Logo" className="w-16 h-16 rounded-lg shadow-md" />
+                  <img src="https://lazy-notez.netlify.app/images/Project%20Logo.png" alt="Lazy Notez Logo" className="w-16 h-16 rounded-lg shadow-md object-cover" />
                   <h2 className="text-4xl md:text-5xl font-bold text-gray-900">Lazy Notez</h2>
                 </div>
                 <h3 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -242,7 +242,104 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
             </section>
           )}
 
-          {/* Footer */}
+          {/* Contact Section */}
+          <section className="mb-20 py-16">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Get In Touch</h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">Have questions? We'd love to hear from you. Connect with us on social media or reach out directly.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {/* Email */}
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all border border-gray-100 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Mail className="text-blue-600" size={32} />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Email</h3>
+                <p className="text-gray-600 mb-4">Contact us directly via email</p>
+                <a href="mailto:support@lazynotez.com" className="text-blue-600 hover:text-blue-700 font-semibold">support@lazynotez.com</a>
+              </div>
+
+              {/* Phone */}
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all border border-gray-100 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                    <Phone className="text-green-600" size={32} />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Phone</h3>
+                <p className="text-gray-600 mb-4">Call us during business hours</p>
+                <a href="tel:+919876543210" className="text-green-600 hover:text-green-700 font-semibold">+91 9876543210</a>
+              </div>
+
+              {/* Location */}
+              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all border border-gray-100 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <MapPin className="text-red-600" size={32} />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Location</h3>
+                <p className="text-gray-600 mb-4">Visit our office</p>
+                <p className="text-gray-700 font-semibold">India</p>
+              </div>
+            </div>
+
+            {/* Social Media */}
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-gray-900 mb-8">Follow Us</h3>
+              <div className="flex justify-center gap-6 flex-wrap">
+                <a 
+                  href="https://instagram.com/lazynotez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full flex items-center justify-center text-white hover:shadow-lg hover:scale-110 transition-all"
+                  title="Instagram"
+                >
+                  <Instagram size={24} />
+                </a>
+                <a 
+                  href="https://linkedin.com/company/lazynotez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white hover:shadow-lg hover:scale-110 transition-all"
+                  title="LinkedIn"
+                >
+                  <Linkedin size={24} />
+                </a>
+                <a 
+                  href="https://twitter.com/lazynotez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-14 h-14 bg-sky-500 rounded-full flex items-center justify-center text-white hover:shadow-lg hover:scale-110 transition-all"
+                  title="Twitter"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2s9 5 20 5a9.5 9.5 0 00-9-5.5c4.75 2.25 10-1 10-6.5 0-.14-.04-.28-.1-.42A7.8 7.8 0 0023 3z"/></svg>
+                </a>
+                <a 
+                  href="https://facebook.com/lazynotez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-14 h-14 bg-blue-700 rounded-full flex items-center justify-center text-white hover:shadow-lg hover:scale-110 transition-all"
+                  title="Facebook"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a6 6 0 00-6 6v3H7v4h2v8h4v-8h3l1-4h-4V8a2 2 0 012-2h3z"/></svg>
+                </a>
+                <a 
+                  href="https://youtube.com/@lazynotez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center text-white hover:shadow-lg hover:scale-110 transition-all"
+                  title="YouTube"
+                >
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                </a>
+              </div>
+              <p className="text-gray-600 text-sm mt-6">Don't forget to follow us for updates, tips, and announcements!</p>
+            </div>
+          </section>
           <footer className="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-3xl p-12 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
               <div>
