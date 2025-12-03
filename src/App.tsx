@@ -17,16 +17,46 @@ function Login({ onLogin }: { onLogin: (userData: any) => void }) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find((u: any) => u.username === username && u.password === password);
-    
-    if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      onLogin(user);
-      navigate('/home');
-    } else {
-      alert('Invalid credentials');
-    }
+    const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+
+    // Try backend login first
+    fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password })
+    }).then(async (res) => {
+      if (res.ok) {
+        const data = await res.json();
+        const current = { ...data.user, accessToken: data.accessToken };
+        localStorage.setItem('currentUser', JSON.stringify(current));
+        onLogin(current);
+        navigate('/home');
+      } else {
+        // fallback to localStorage-based auth
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const user = users.find((u: any) => u.username === username && u.password === password);
+        if (user) {
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          onLogin(user);
+          navigate('/home');
+        } else {
+          const err = await res.json().catch(() => null);
+          alert(err?.message || 'Invalid credentials');
+        }
+      }
+    }).catch(() => {
+      // network error -> fallback to local
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const user = users.find((u: any) => u.username === username && u.password === password);
+      if (user) {
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        onLogin(user);
+        navigate('/home');
+      } else {
+        alert('Invalid credentials (offline)');
+      }
+    });
   };
 
   return (

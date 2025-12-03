@@ -29,7 +29,28 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState<Partial<AdminUser>>({});
 
   useEffect(() => {
-    loadUsers();
+    // attempt to load users from backend if admin has accessToken; otherwise, fallback to localStorage
+    const currentUserRaw = localStorage.getItem('currentUser');
+    let cu: any = null;
+    try { cu = JSON.parse(currentUserRaw || 'null'); } catch (e) { cu = null }
+
+    if (cu && cu.accessToken) {
+      const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+      fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${cu.accessToken}` } })
+        .then(async res => {
+          if (res.ok) {
+            const data = await res.json();
+            // data expected to be array of users
+            const mapped = data.map((u: any) => ({ id: u._id || u.id, name: u.name, username: u.username, email: u.email, college: u.college, department: u.department, univRegNo: u.universityRegisterNumber || u.univRegNo || '', role: u.role, status: u.status, createdAt: u.createdAt }));
+            setUsers(mapped);
+            return;
+          }
+          // fallback to local
+          loadUsers();
+        }).catch(() => loadUsers());
+    } else {
+      loadUsers();
+    }
     // verify currentUser is admin; if not, redirect. This avoids showing incorrect UI on back navigation.
     const currentUserRaw = localStorage.getItem('currentUser');
     if (!currentUserRaw) {

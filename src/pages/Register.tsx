@@ -28,36 +28,82 @@ function Register({ onRegister }: RegisterProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords don't match!");
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.some((user: any) => user.username === formData.username)) {
-      alert('Username already exists!');
-      return;
-    }
-
-    // Map role to admin/user: only administrator role becomes admin, others are users
-    const userRole = formData.role === 'administrator' ? 'admin' : 'user';
-
-    const userData = {
-      ...formData,
-      id: Date.now().toString(),
-      role: userRole,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      recentActivity: []
-    };
-
-    users.push(userData);
-    localStorage.setItem('users', JSON.stringify(users));
-    localStorage.setItem('currentUser', JSON.stringify(userData));
-
-    onRegister(userData);
-    navigate('/home');
+    // Try backend registration first
+    const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+    fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        universityRegisterNumber: formData.univRegNo,
+        department: formData.department
+      })
+    }).then(async (res) => {
+      if (res.ok) {
+        const data = await res.json();
+        const current = { ...data.user, accessToken: data.accessToken };
+        // store lightweight user locally for legacy flows
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        users.push({ id: current.id || current._id || Date.now().toString(), name: formData.name, username: formData.username, email: formData.email, college: formData.college, department: formData.department, univRegNo: formData.univRegNo, role: current.role || formData.role, password: formData.password, status: 'active', createdAt: new Date().toISOString() });
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('currentUser', JSON.stringify(current));
+        onRegister(current);
+        navigate('/home');
+      } else {
+        const err = await res.json().catch(() => null);
+        // fallback to localStorage registration if backend rejects
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        if (users.some((user: any) => user.username === formData.username)) {
+          alert(err?.message || 'Username already exists!');
+          return;
+        }
+        const userRole = formData.role === 'administrator' ? 'admin' : 'user';
+        const userData = {
+          ...formData,
+          id: Date.now().toString(),
+          role: userRole,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          recentActivity: []
+        };
+        users.push(userData);
+        localStorage.setItem('users', JSON.stringify(users));
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        onRegister(userData);
+        navigate('/home');
+      }
+    }).catch(() => {
+      // network error -> fallback to local
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      if (users.some((user: any) => user.username === formData.username)) {
+        alert('Username already exists!');
+        return;
+      }
+      const userRole = formData.role === 'administrator' ? 'admin' : 'user';
+      const userData = {
+        ...formData,
+        id: Date.now().toString(),
+        role: userRole,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        recentActivity: []
+      };
+      users.push(userData);
+      localStorage.setItem('users', JSON.stringify(users));
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      onRegister(userData);
+      navigate('/home');
+    });
   };
 
   return (
