@@ -113,6 +113,25 @@ export default function AdminDashboard() {
     let cu: any = null;
     try { cu = JSON.parse(currentUserRaw || 'null'); } catch (e) { cu = null }
 
+    // verify currentUser is admin; if not, redirect. This avoids showing incorrect UI on back navigation.
+    if (!currentUserRaw) {
+      navigate('/');
+      return;
+    }
+    try {
+      const cuVerify = JSON.parse(currentUserRaw);
+      if (!cuVerify || cuVerify.role !== 'admin') {
+        navigate('/');
+        return;
+      }
+      setIsAuthChecked(true);
+    } catch (e) {
+      localStorage.removeItem('currentUser');
+      navigate('/');
+      return;
+    }
+
+    // Load users from backend if admin has accessToken
     if (cu && cu.accessToken) {
       const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
       fetch(`${API_BASE}/users`, { headers: { Authorization: `Bearer ${cu.accessToken}` } })
@@ -129,24 +148,6 @@ export default function AdminDashboard() {
         }).catch(() => loadUsers());
     } else {
       loadUsers();
-    }
-    // verify currentUser is admin; if not, redirect. This avoids showing incorrect UI on back navigation.
-    const currentUserRaw = localStorage.getItem('currentUser');
-    if (!currentUserRaw) {
-      navigate('/');
-      return;
-    }
-    try {
-      const cu = JSON.parse(currentUserRaw);
-      if (!cu || cu.role !== 'admin') {
-        navigate('/');
-        return;
-      }
-      setIsAuthChecked(true);
-    } catch (e) {
-      localStorage.removeItem('currentUser');
-      navigate('/');
-      return;
     }
   }, []);
 
