@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import api from '../lib/api'
 import { useAppSelector } from '../store/hooks'
 import { Alert, LoadingSpinner } from '../components/Common'
-import { Trash2, Shield, Activity, FileText } from 'lucide-react'
+import { Trash2, Shield, Activity, FileText, MessageSquare } from 'lucide-react'
 import { io as createSocket } from 'socket.io-client'
 
 interface User {
@@ -23,6 +23,15 @@ interface ActivityLog {
   createdAt: string
 }
 
+interface Feedback {
+  _id: string
+  name?: string
+  email?: string
+  message: string
+  user?: { _id: string; name: string }
+  createdAt: string
+}
+
 interface SystemStats {
   totalUsers: number
   totalNotes: number
@@ -34,7 +43,7 @@ const AdminPanel: React.FC = () => {
   const auth = useAppSelector(s => s.auth)
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'logs' | 'about'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'logs' | 'about' | 'feedback'>('dashboard')
 
   // Data states
   const [loading, setLoading] = useState(true)
@@ -45,6 +54,7 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([])
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [aboutContent, setAboutContent] = useState({ title: '', content: '' })
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   
   const [editingAbout, setEditingAbout] = useState(false)
   const [editingRoleUserId, setEditingRoleUserId] = useState<string | null>(null)
@@ -84,6 +94,11 @@ const AdminPanel: React.FC = () => {
       }
     })
 
+    socket.on('feedback.submitted', (feedback: any) => {
+      setFeedbacks(prev => [feedback, ...prev])
+      setSuccess('New feedback received')
+    })
+
     socket.on('disconnect', () => {
       // console.log('Admin socket disconnected')
     })
@@ -97,17 +112,19 @@ const AdminPanel: React.FC = () => {
   const fetchAllData = async () => {
     try {
       setLoading(true)
-      const [statsRes, usersRes, logsRes, aboutRes] = await Promise.all([
+      const [statsRes, usersRes, logsRes, aboutRes, feedbackRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/users'),
         api.get('/admin/activity'),
         api.get('/admin/about'),
+        api.get('/admin/feedback').catch(() => ({ data: { feedbacks: [] } })),
       ])
 
       setStats(statsRes.data)
       setUsers(usersRes.data.users)
       setLogs(logsRes.data.logs)
       setAboutContent(aboutRes.data)
+      setFeedbacks(feedbackRes.data.feedbacks || [])
       setError('')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load admin data')
@@ -174,6 +191,17 @@ const AdminPanel: React.FC = () => {
     }
   }
 
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!window.confirm('Delete this feedback?')) return
+    try {
+      await api.delete(`/admin/feedback/${feedbackId}`)
+      setFeedbacks(feedbacks.filter(f => f._id !== feedbackId))
+      setSuccess('Feedback deleted successfully')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to delete feedback')
+    }
+  }
+
   if (!auth.user || auth.user.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -226,6 +254,16 @@ const AdminPanel: React.FC = () => {
               }`}
             >
               Activity Logs
+            </button>
+            <button
+              onClick={() => setActiveTab('feedback')}
+              className={`px-4 py-2 font-semibold border-b-2 transition ${
+                activeTab === 'feedback'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Feedback ({feedbacks.length})
             </button>
             <button
               onClick={() => setActiveTab('about')}
@@ -497,6 +535,47 @@ const AdminPanel: React.FC = () => {
                       Edit About Page
                     </button>
                   </>
+                )}
+              </div>
+            )}
+
+            {/* Feedback Tab */}
+            {activeTab === 'feedback' && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                  <MessageSquare size={28} />
+                  User Feedback ({feedbacks.length})
+                </h2>
+
+                {feedbacks.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No feedback yet</p>
+                ) : (
+                  <div className="space-y-4">
+                    {feedbacks.map(feedback => (
+                      <div key={feedback._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              {feedback.name && <span className="font-semibold text-gray-900">{feedback.name}</span>}
+                              {feedback.email && <span className="text-sm text-gray-500">{feedback.email}</span>}
+                            </div>
+                            {feedback.user && (
+                              <p className="text-xs text-gray-400 mt-1">From: {feedback.user.name}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleDeleteFeedback(feedback._id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded transition"
+                            title="Delete feedback"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                        <p className="text-gray-700 mb-2">{feedback.message}</p>
+                        <p className="text-xs text-gray-400">{new Date(feedback.createdAt).toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
