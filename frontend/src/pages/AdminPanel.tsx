@@ -50,6 +50,7 @@ const AdminPanel: React.FC = () => {
   const [editingRoleUserId, setEditingRoleUserId] = useState<string | null>(null)
   const [editingRoleValue, setEditingRoleValue] = useState<'admin' | 'faculty' | 'student' | 'user'>('user')
   const [submitting, setSubmitting] = useState(false)
+  const [resyncLoading, setResyncLoading] = useState(false)
 
   useEffect(() => {
     // Only fetch admin data when auth.user is available and is admin
@@ -74,6 +75,13 @@ const AdminPanel: React.FC = () => {
     socket.on('user.created', (newUser: any) => {
       setUsers(prev => [newUser, ...prev])
       setSuccess('New user registered')
+    })
+
+    socket.on('users.resync', (data: any) => {
+      if (data && data.users && Array.isArray(data.users)) {
+        setUsers(data.users)
+        setSuccess('User list refreshed from database')
+      }
     })
 
     socket.on('disconnect', () => {
@@ -150,6 +158,19 @@ const AdminPanel: React.FC = () => {
       setError(err.response?.data?.message || 'Failed to update about page')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleResyncUsers = async () => {
+    try {
+      setResyncLoading(true)
+      await api.post('/admin/resync-users')
+      setSuccess('Users resynchronized from database')
+      setError('')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to resync users')
+    } finally {
+      setResyncLoading(false)
     }
   }
 
@@ -274,6 +295,14 @@ const AdminPanel: React.FC = () => {
                 <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
                   <h2 className="text-lg font-semibold text-gray-800">Users</h2>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleResyncUsers}
+                      disabled={resyncLoading}
+                      title="Resync users from database"
+                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm transition disabled:bg-gray-400"
+                    >
+                      {resyncLoading ? 'Syncing...' : 'Resync from DB'}
+                    </button>
                     <button
                       onClick={fetchAllData}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm transition"

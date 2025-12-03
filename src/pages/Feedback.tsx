@@ -5,6 +5,7 @@ export default function FeedbackPage() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -13,14 +14,52 @@ export default function FeedbackPage() {
       return;
     }
 
-    const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
-    feedbacks.push({ id: Date.now().toString(), name, email, message, createdAt: new Date().toISOString() });
-    localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
-    setName('');
-    setEmail('');
-    setMessage('');
-    setSuccess('Thanks — your feedback was submitted')
-    setTimeout(() => setSuccess(''), 3000);
+    setLoading(true);
+    const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+    const currentUserRaw = localStorage.getItem('currentUser');
+    let cu: any = null;
+    try { cu = JSON.parse(currentUserRaw || 'null'); } catch (e) { cu = null }
+
+    // Try backend first if user has accessToken
+    if (cu && cu.accessToken) {
+      fetch(`${API_BASE}/admin/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cu.accessToken}` },
+        body: JSON.stringify({ name, email, message })
+      }).then(async res => {
+        if (res.ok) {
+          setName('');
+          setEmail('');
+          setMessage('');
+          setSuccess('Thanks — your feedback was submitted');
+          setTimeout(() => setSuccess(''), 3000);
+        } else {
+          const err = await res.json().catch(() => null);
+          alert(err?.message || 'Failed to submit feedback');
+        }
+      }).catch(() => {
+        // fallback to local storage
+        const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+        feedbacks.push({ id: Date.now().toString(), name, email, message, createdAt: new Date().toISOString() });
+        localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+        setName('');
+        setEmail('');
+        setMessage('');
+        setSuccess('Thanks — your feedback was submitted (offline)');
+        setTimeout(() => setSuccess(''), 3000);
+      }).finally(() => setLoading(false));
+    } else {
+      // fallback to local storage
+      const feedbacks = JSON.parse(localStorage.getItem('feedbacks') || '[]');
+      feedbacks.push({ id: Date.now().toString(), name, email, message, createdAt: new Date().toISOString() });
+      localStorage.setItem('feedbacks', JSON.stringify(feedbacks));
+      setName('');
+      setEmail('');
+      setMessage('');
+      setSuccess('Thanks — your feedback was submitted');
+      setTimeout(() => setSuccess(''), 3000);
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,7 +80,9 @@ export default function FeedbackPage() {
           <textarea value={message} onChange={e => setMessage(e.target.value)} rows={6} className="w-full px-3 py-2 border rounded" />
         </div>
         <div>
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Send Feedback</button>
+          <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400">
+            {loading ? 'Sending...' : 'Send Feedback'}
+          </button>
         </div>
       </form>
     </div>

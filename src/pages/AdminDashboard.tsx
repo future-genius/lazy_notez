@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Users, FileText, MessageSquare, Settings, LogOut, Bell, Search, Menu, Edit2, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import { BarChart3, Users, FileText, MessageSquare, Settings, LogOut, Bell, Search, Menu, Edit2, Trash2, Plus, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import Feedback from './Feedback';
 import { useNavigate } from 'react-router-dom';
+import io, { Socket } from 'socket.io-client';
 
 interface AdminUser {
   id: string;
@@ -27,6 +28,84 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Partial<AdminUser>>({});
+  const [socketRef, setSocketRef] = useState<Socket | null>(null);
+  const [resyncLoading, setResyncLoading] = useState(false);
+
+  useEffect(() => {
+    // Initialize Socket.IO connection for real-time updates
+    const SOCKET_URL = (window as any).__SOCKET_URL__ || 'http://localhost:4000';
+    const socket = io(SOCKET_URL, { reconnection: true });
+    setSocketRef(socket);
+
+    // Listen for users.resync event - when admin forces refresh, update local list
+    socket.on('users.resync', (data: any) => {
+      if (data && data.users && Array.isArray(data.users)) {
+        const mapped = data.users.map((u: any) => ({ 
+          id: u._id || u.id, 
+          name: u.name, 
+          username: u.username, 
+          email: u.email, 
+          college: u.college, 
+          department: u.department, 
+          univRegNo: u.universityRegisterNumber || u.univRegNo || '', 
+          role: u.role, 
+          status: u.status, 
+          createdAt: u.createdAt 
+        }));
+        setUsers(mapped);
+      }
+    });
+
+    // Listen for new user creation events
+    socket.on('user.created', (newUser: any) => {
+      setUsers(prev => [...prev, {
+        id: newUser._id || newUser.id,
+        name: newUser.name,
+        username: newUser.username,
+        email: newUser.email,
+        college: newUser.college,
+        department: newUser.department,
+        univRegNo: newUser.universityRegisterNumber || newUser.univRegNo || '',
+        role: newUser.role,
+        status: newUser.status,
+        createdAt: newUser.createdAt
+      }]);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const handleResyncUsers = async () => {
+    const currentUserRaw = localStorage.getItem('currentUser');
+    let cu: any = null;
+    try { cu = JSON.parse(currentUserRaw || 'null'); } catch (e) { cu = null }
+
+    if (!cu || !cu.accessToken) {
+      alert('Not authenticated');
+      return;
+    }
+
+    setResyncLoading(true);
+    const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+    try {
+      const res = await fetch(`${API_BASE}/admin/resync-users`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cu.accessToken}` }
+      });
+      if (res.ok) {
+        alert('Users resynchronized from database!');
+      } else {
+        alert('Failed to resync users');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error resyncing users');
+    } finally {
+      setResyncLoading(false);
+    }
+  };
 
   useEffect(() => {
     // attempt to load users from backend if admin has accessToken; otherwise, fallback to localStorage
@@ -229,6 +308,14 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-6">
+            <button 
+              onClick={handleResyncUsers}
+              disabled={resyncLoading}
+              title="Resync users from database"
+              className="relative p-2 hover:bg-white/10 rounded-lg transition disabled:opacity-50"
+            >
+              <RefreshCw size={20} className={resyncLoading ? 'animate-spin' : ''} />
+            </button>
             <button className="relative p-2 hover:bg-white/10 rounded-lg transition">
               <Bell size={20} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
