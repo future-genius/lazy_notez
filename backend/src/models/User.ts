@@ -9,6 +9,8 @@ export interface IUser extends Document {
   status: 'active' | 'inactive';
   refreshTokens: string[];
   lastLogin?: Date;
+  universityRegisterNumber?: string;
+  department?: string;
   createdAt: Date;
 }
 
@@ -21,6 +23,8 @@ const UserSchema: Schema = new Schema<IUser>({
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   refreshTokens: { type: [String], default: [] },
   lastLogin: { type: Date },
+  universityRegisterNumber: { type: String, required: false },
+  department: { type: String, required: false },
   createdAt: { type: Date, default: Date.now }
 });
 

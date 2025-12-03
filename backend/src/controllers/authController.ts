@@ -31,12 +31,14 @@ export const register = async (req: Request, res: Response) => {
     const email = sanitizeHtml(req.body.email || '');
     const password = req.body.password;
     const role = req.body.role === 'administrator' ? 'admin' : (req.body.role || 'student');
+    const universityRegisterNumber = sanitizeHtml(req.body.universityRegisterNumber || '');
+    const department = sanitizeHtml(req.body.department || '');
 
     const exists = await User.findOne({ username });
     if (exists) return res.status(409).json({ message: 'Username already exists' });
 
     const hashed = await bcrypt.hash(password, 12);
-    const user = new User({ name, username, email, password: hashed, role, status: 'active' });
+    const user = new User({ name, username, email, password: hashed, role, status: 'active', universityRegisterNumber, department });
     await user.save();
 
     await ActivityLog.create({ user: user._id, action: 'register', ip: req.ip });
@@ -52,6 +54,8 @@ export const register = async (req: Request, res: Response) => {
           email: user.email,
           role: user.role,
           status: user.status,
+          department: user.department,
+          universityRegisterNumber: user.universityRegisterNumber,
           createdAt: user.createdAt
         };
         io.emit('user.created', payload);
@@ -101,6 +105,21 @@ export const login = async (req: Request, res: Response) => {
     await user.save();
 
     await ActivityLog.create({ user: user._id, action: 'login', ip: req.ip });
+
+    // Emit real-time login notification
+    try {
+      const io = getIO();
+      if (io) {
+        io.emit('user.login', {
+          username: user.username,
+          name: user.name,
+          timestamp: new Date()
+        });
+      }
+    } catch (e) {
+      // non-fatal
+      console.warn('Failed to emit user.login event', e);
+    }
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,

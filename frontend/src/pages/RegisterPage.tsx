@@ -6,12 +6,36 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Alert, LoadingSpinner } from '../components/Common'
 import { UserPlus } from 'lucide-react'
 
+const DEPARTMENTS = [
+  'Agricultural Engineering',
+  'Civil Engineering',
+  'Computer Science and Engineering',
+  'Electronics and Communication Engineering',
+  'Electrical and Electronics Engineering',
+  'Electronics and Instrumentation Engineering',
+  'Mechanical Engineering',
+  'Information Technology',
+  'Cyber Security',
+  'Medical Electronics',
+  'Artificial Intelligence and Data Science',
+  'Structural Engineering',
+  'Communication Systems',
+  'Power Systems Engineering',
+  'Control and Instrumentation Engineering',
+  'Industrial Safety Engineering',
+  'Data Science',
+  'Business Administration',
+  'Computer Applications'
+]
+
 const RegisterPage: React.FC = () => {
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState('student')
+  const [universityRegisterNumber, setUniversityRegisterNumber] = useState('')
+  const [department, setDepartment] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const dispatch = useAppDispatch()
@@ -26,9 +50,26 @@ const RegisterPage: React.FC = () => {
       return
     }
 
+    if (!universityRegisterNumber.trim()) {
+      setError('University Register Number is required')
+      return
+    }
+
+    if (!department) {
+      setError('Please select a department')
+      return
+    }
+
     setLoading(true)
     try {
-      const r = await api.post('/auth/register', { name, username, password, role })
+      const r = await api.post('/auth/register', { 
+        name, 
+        username, 
+        password, 
+        role,
+        universityRegisterNumber,
+        department
+      })
       dispatch(setCredentials({ accessToken: r.data.accessToken, user: r.data.user }))
       navigate('/dashboard')
     } catch (err: any) {
@@ -40,7 +81,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <div className="bg-white rounded-lg shadow-xl p-8">
           <div className="flex justify-center mb-6">
             <div className="bg-blue-600 p-3 rounded-full">
@@ -54,53 +95,86 @@ const RegisterPage: React.FC = () => {
           {error && <Alert type="error" message={error} />}
 
           <form onSubmit={submit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="John Doe"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  placeholder="johndoe"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  required
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="johndoe"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">University Register Number</label>
+                <input
+                  type="text"
+                  value={universityRegisterNumber}
+                  onChange={e => setUniversityRegisterNumber(e.target.value)}
+                  placeholder="e.g., REG123456"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                <select
+                  value={department}
+                  onChange={e => setDepartment(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  required
+                >
+                  <option value="">Select a department</option>
+                  {DEPARTMENTS.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
-              <select
-                value={role}
-                onChange={e => setRole(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-              >
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="administrator">Administrator</option>
-              </select>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Role</label>
+                <select
+                  value={role}
+                  onChange={e => setRole(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                >
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="administrator">Administrator</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Min. 8 characters"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-                required
-              />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
+                  required
+                />
+              </div>
             </div>
 
             <div>
