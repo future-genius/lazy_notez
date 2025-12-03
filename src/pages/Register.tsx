@@ -144,17 +144,25 @@ function Register({ onRegister }: RegisterProps) {
                 onChange={handleChange}
               >
                 <option value="">Select Department</option>
-                <option value="CSE">Computer Science Engineering</option>
-                <option value="CYS">Cyber Security</option>
-                <option value="ECE">Electronics & Communication</option>
-                <option value="CIVIL">Civil Engineering</option>
-                <option value="MECH">Mechanical Engineering</option>
-                <option value="AGRI">Agricultural Engineering</option>
-                <option value="EEE">Electrical & Electronics</option>
-                <option value="MDE">Manufacturing & Design</option>
-                <option value="IT">Information Technology</option>
-                <option value="EIE">Electronics & Instrumentation</option>
-                <option value="AIDS">AI & Data Science</option>
+                <option value="Agricultural Engineering">Agricultural Engineering</option>
+                <option value="Civil Engineering">Civil Engineering</option>
+                <option value="Computer Science and Engineering">Computer Science and Engineering</option>
+                <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+                <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
+                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Cyber Security">Cyber Security</option>
+                <option value="Medical Electronics">Medical Electronics</option>
+                <option value="Artificial Intelligence and Data Science">Artificial Intelligence and Data Science</option>
+                <option value="Structural Engineering">Structural Engineering</option>
+                <option value="Communication Systems">Communication Systems</option>
+                <option value="Power Systems Engineering">Power Systems Engineering</option>
+                <option value="Control and Instrumentation Engineering">Control and Instrumentation Engineering</option>
+                <option value="Industrial Safety Engineering">Industrial Safety Engineering</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Business Administration">Business Administration</option>
+                <option value="Computer Applications">Computer Applications</option>
               </select>
             </div>
             <div>

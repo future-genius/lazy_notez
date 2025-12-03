@@ -10,6 +10,7 @@ interface AdminUser {
   password: string;
   college?: string;
   department?: string;
+  univRegNo?: string;
   role: 'admin' | 'user';
   status: 'active' | 'inactive';
   createdAt?: string;
@@ -376,8 +377,33 @@ function UsersTab({ users, searchQuery, onAddUser, onEditUser, onDeleteUser, sho
               <input type="text" placeholder="Enter college name" value={formData.college || ''} onChange={(e) => setFormData({ ...formData, college: e.target.value })} className="w-full mt-2 bg-white/5 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-primary-500" />
             </div>
             <div>
+              <label className="text-sm text-gray-300 font-semibold">Univ Reg No</label>
+              <input type="text" placeholder="e.g., REG123456" value={formData.univRegNo || ''} onChange={(e) => setFormData({ ...formData, univRegNo: e.target.value })} className="w-full mt-2 bg-white/5 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-primary-500" />
+            </div>
+            <div>
               <label className="text-sm text-gray-300 font-semibold">Department</label>
-              <input type="text" placeholder="Enter department" value={formData.department || ''} onChange={(e) => setFormData({ ...formData, department: e.target.value })} className="w-full mt-2 bg-white/5 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-primary-500" />
+              <select value={formData.department || ''} onChange={(e) => setFormData({ ...formData, department: e.target.value })} className="w-full mt-2 bg-white/5 border border-white/10 rounded px-4 py-2 text-white focus:outline-none focus:border-primary-500">
+                <option value="">Select Department</option>
+                <option value="Agricultural Engineering">Agricultural Engineering</option>
+                <option value="Civil Engineering">Civil Engineering</option>
+                <option value="Computer Science and Engineering">Computer Science and Engineering</option>
+                <option value="Electronics and Communication Engineering">Electronics and Communication Engineering</option>
+                <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+                <option value="Electronics and Instrumentation Engineering">Electronics and Instrumentation Engineering</option>
+                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Cyber Security">Cyber Security</option>
+                <option value="Medical Electronics">Medical Electronics</option>
+                <option value="Artificial Intelligence and Data Science">Artificial Intelligence and Data Science</option>
+                <option value="Structural Engineering">Structural Engineering</option>
+                <option value="Communication Systems">Communication Systems</option>
+                <option value="Power Systems Engineering">Power Systems Engineering</option>
+                <option value="Control and Instrumentation Engineering">Control and Instrumentation Engineering</option>
+                <option value="Industrial Safety Engineering">Industrial Safety Engineering</option>
+                <option value="Data Science">Data Science</option>
+                <option value="Business Administration">Business Administration</option>
+                <option value="Computer Applications">Computer Applications</option>
+              </select>
             </div>
             <div>
               <label className="text-sm text-gray-300 font-semibold">Role</label>
