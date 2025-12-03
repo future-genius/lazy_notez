@@ -7,6 +7,7 @@ import NotesPage from './pages/NotesPage'
 import ResourcesPage from './pages/ResourcesPage'
 import AdminPanel from './pages/AdminPanel'
 import Navbar from './components/Navbar'
+import LoginNotificationListener from './components/LoginNotificationListener'
 import { useAppSelector } from './store/hooks'
 
 const App: React.FC = () => {
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       {auth.accessToken && <Navbar />}
+      <LoginNotificationListener />
       <Routes>
         <Route path="/" element={<Navigate to={auth.accessToken ? "/dashboard" : "/login"} />} />
         <Route path="/login" element={<LoginPage />} />

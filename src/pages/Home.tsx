@@ -92,9 +92,13 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
           <section className="mb-20">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                <div className="mb-6 flex items-center gap-4">
+                  <img src="/images/lazy-notez-logo.png" alt="Lazy Notez Logo" className="w-16 h-16 rounded-lg shadow-md" />
+                  <h2 className="text-4xl md:text-5xl font-bold text-gray-900">Lazy Notez</h2>
+                </div>
+                <h3 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
                   The Future of <span className="bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Learning</span>, Simplified
-                </h2>
+                </h3>
                 <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                   Access premium study materials, future-ready notes, and connect with thousands of learners. Your journey to academic excellence starts here.
                 </p>
