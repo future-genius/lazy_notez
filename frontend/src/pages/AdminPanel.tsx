@@ -52,11 +52,18 @@ const AdminPanel: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchAllData()
-  }, [])
+    // Only fetch admin data when auth.user is available and is admin
+    if (auth.user && auth.user.role === 'admin') {
+      fetchAllData()
+    }
+    // do not run on every render; only when auth.user changes
+  }, [auth.user])
 
   // Real-time updates: listen for newly created users
   useEffect(() => {
+    // Initialize socket only when admin is authenticated
+    if (!auth.user || auth.user.role !== 'admin') return
+
     const apiBase = (import.meta.env.VITE_API_BASE || 'http://localhost:4000/api').replace(/\/api\/?$/i, '')
     const socket = createSocket(apiBase, { withCredentials: true })
 
@@ -65,7 +72,6 @@ const AdminPanel: React.FC = () => {
     })
 
     socket.on('user.created', (newUser: any) => {
-      // Prepend the user to the list and notify admin
       setUsers(prev => [newUser, ...prev])
       setSuccess('New user registered')
     })
@@ -77,7 +83,8 @@ const AdminPanel: React.FC = () => {
     return () => {
       socket.disconnect()
     }
-  }, [])
+    // only initialize when auth.user value changes
+  }, [auth.user])
 
   const fetchAllData = async () => {
     try {

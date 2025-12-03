@@ -12,6 +12,7 @@ export default function AuthRegister({ onRegister }: Props) {
     name: '',
     username: '',
     college: '',
+    univRegNo: '',
     department: '',
     role: 'student',
     password: '',
@@ -74,6 +75,10 @@ export default function AuthRegister({ onRegister }: Props) {
         <div>
           <label className="block text-sm font-medium text-gray-700">College</label>
           <input name="college" value={formData.college} onChange={handleChange} required className="block w-full px-3 py-2 border rounded-lg" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Univ Reg No</label>
+          <input name="univRegNo" value={formData.univRegNo} onChange={handleChange} placeholder="e.g., REG123456" className="block w-full px-3 py-2 border rounded-lg" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Department</label>
