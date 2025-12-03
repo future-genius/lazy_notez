@@ -47,6 +47,8 @@ const AdminPanel: React.FC = () => {
   const [aboutContent, setAboutContent] = useState({ title: '', content: '' })
   
   const [editingAbout, setEditingAbout] = useState(false)
+  const [editingRoleUserId, setEditingRoleUserId] = useState<string | null>(null)
+  const [editingRoleValue, setEditingRoleValue] = useState<'admin' | 'faculty' | 'student' | 'user'>('user')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -108,6 +110,20 @@ const AdminPanel: React.FC = () => {
       setSuccess('User deleted successfully')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete user')
+    }
+  }
+
+  const handleUpdateRole = async (userId: string) => {
+    try {
+      setSubmitting(true)
+      const res = await api.put(`/users/${userId}`, { role: editingRoleValue })
+      setUsers(users.map(u => u._id === userId ? res.data : u))
+      setEditingRoleUserId(null)
+      setSuccess('User role updated successfully')
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update user role')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -275,9 +291,52 @@ const AdminPanel: React.FC = () => {
                           <td className="px-6 py-3 text-sm text-gray-600">{user.username}</td>
                           <td className="px-6 py-3 text-sm text-gray-600">{user.email}</td>
                           <td className="px-6 py-3 text-sm">
-                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 capitalize">
-                              {user.role}
-                            </span>
+                            {editingRoleUserId === user._id ? (
+                              <div className="flex gap-1">
+                                <select
+                                  value={editingRoleValue}
+                                  onChange={e => setEditingRoleValue(e.target.value as 'admin' | 'faculty' | 'student' | 'user')}
+                                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  disabled={submitting}
+                                >
+                                  <option value="student">Student</option>
+                                  <option value="faculty">Faculty</option>
+                                  <option value="admin">Admin</option>
+                                  <option value="user">User</option>
+                                </select>
+                                <button
+                                  onClick={() => handleUpdateRole(user._id)}
+                                  disabled={submitting}
+                                  className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition disabled:bg-gray-400"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingRoleUserId(null)}
+                                  disabled={submitting}
+                                  className="px-2 py-1 bg-gray-300 text-gray-800 rounded text-xs hover:bg-gray-400 transition disabled:bg-gray-200"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 capitalize">
+                                  {user.role}
+                                </span>
+                                {user._id !== auth.user?._id && (
+                                  <button
+                                    onClick={() => {
+                                      setEditingRoleUserId(user._id)
+                                      setEditingRoleValue(user.role)
+                                    }}
+                                    className="text-blue-600 hover:text-blue-900 text-xs underline"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-3 text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${
