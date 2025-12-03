@@ -93,7 +93,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <div className="mb-6 flex items-center gap-4">
-                  <img src="https://lazy-notez.netlify.app/images/Project%20Logo.png" alt="Lazy Notez Logo" className="w-16 h-16 rounded-lg shadow-md object-cover" />
+                  <img src="/images/lazy-notez.png" alt="Lazy Notez Logo" className="w-16 h-16 rounded-lg shadow-md object-cover" />
                   <h2 className="text-4xl md:text-5xl font-bold text-gray-900">Lazy Notez</h2>
                 </div>
                 <h3 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -114,7 +114,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary-200 to-primary-100 rounded-3xl blur-3xl opacity-40"></div>
                 <img 
-                  src="/images/Project Logo.png" 
+                  src="/images/lazy-notez.png" 
                   alt="Lazy Notez" 
                   className="relative rounded-3xl shadow-2xl w-full object-cover" 
                   onError={(e) => { 
