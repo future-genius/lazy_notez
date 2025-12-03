@@ -11,6 +11,7 @@ function Register({ onRegister }: RegisterProps) {
     name: '',
     username: '',
     college: '',
+    univRegNo: '',
     department: '',
     role: 'student',
     password: '',
@@ -102,6 +103,18 @@ function Register({ onRegister }: RegisterProps) {
                 className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Your College Name"
                 value={formData.college}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="univRegNo" className="block text-sm font-medium text-gray-700">Univ Reg No</label>
+              <input
+                id="univRegNo"
+                name="univRegNo"
+                type="text"
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="e.g., REG123456"
+                value={formData.univRegNo}
                 onChange={handleChange}
               />
             </div>

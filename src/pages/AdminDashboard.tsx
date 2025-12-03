@@ -17,6 +17,7 @@ interface AdminUser {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,12 +28,38 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadUsers();
+    // verify currentUser is admin; if not, redirect. This avoids showing incorrect UI on back navigation.
+    const currentUserRaw = localStorage.getItem('currentUser');
+    if (!currentUserRaw) {
+      navigate('/');
+      return;
+    }
+    try {
+      const cu = JSON.parse(currentUserRaw);
+      if (!cu || cu.role !== 'admin') {
+        navigate('/');
+        return;
+      }
+      setIsAuthChecked(true);
+    } catch (e) {
+      localStorage.removeItem('currentUser');
+      navigate('/');
+      return;
+    }
   }, []);
 
   const loadUsers = () => {
     const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
     setUsers(storedUsers);
   };
+
+  if (!isAuthChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-xl text-gray-600">Verifying credentials...</div>
+      </div>
+    );
+  }
 
   const handleAddUser = () => {
     setEditingUser(null);
