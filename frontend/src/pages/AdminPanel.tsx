@@ -148,8 +148,12 @@ const AdminPanel: React.FC = () => {
 
   if (!auth.user || auth.user.role !== 'admin') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Alert type="error" message="Access denied. Admin panel is only for administrators." onClose={() => {}} />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        {!auth.user ? (
+          <LoadingSpinner />
+        ) : (
+          <Alert type="error" message="Access denied. Admin panel is only for administrators." onClose={() => {}} />
+        )}
       </div>
     )
   }

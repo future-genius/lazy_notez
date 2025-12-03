@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, Phone, MapPin } from 'lucide-react';
+import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import FAB from '../components/ui/FAB';
 
@@ -249,7 +249,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">Have questions? We'd love to hear from you. Connect with us on social media or reach out directly.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
               {/* Email */}
               <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all border border-gray-100 text-center">
                 <div className="flex justify-center mb-4">
@@ -260,18 +260,6 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Email</h3>
                 <p className="text-gray-600 mb-4">Contact us directly via email</p>
                 <a href="mailto:support@lazynotez.com" className="text-blue-600 hover:text-blue-700 font-semibold">support@lazynotez.com</a>
-              </div>
-
-              {/* Phone */}
-              <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all border border-gray-100 text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                    <Phone className="text-green-600" size={32} />
-                  </div>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Phone</h3>
-                <p className="text-gray-600 mb-4">Call us during business hours</p>
-                <a href="tel:+919876543210" className="text-green-600 hover:text-green-700 font-semibold">+91 9876543210</a>
               </div>
 
               {/* Location */}
