@@ -13,18 +13,18 @@ type NavItemProps = {
 // NavItem Component
 function NavItem({ title, isLast = false, onClick, active = false }: NavItemProps) {
   return (
-    <div className="w-full px-6 py-2">
+    <div className="w-full px-3 sm:px-6 py-1 sm:py-2">
       <div
-        className={`w-full flex items-center justify-between cursor-pointer rounded-lg px-3 py-2 transition-colors ${
-          active ? 'bg-primary-50 text-primary-700' : 'hover:bg-surface-muted'
+        className={`w-full flex items-center justify-between cursor-pointer rounded-lg px-3 py-2.5 sm:py-3 transition-all active:scale-95 ${
+          active ? 'bg-primary-500 text-white font-semibold shadow-md' : 'hover:bg-gray-100 text-gray-700'
         }`}
         onClick={onClick}
         role="button"
       >
-        <p className="text-md max-sm:text-base font-medium">{title}</p>
-        {!isLast && <ChevronRight className="w-4 h-4 text-gray-400" />}
+        <p className="text-sm sm:text-md font-medium truncate">{title}</p>
+        {!isLast && <ChevronRight className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />}
       </div>
-      {!isLast && <hr className="border-gray-100 w-full mt-2" />}
+      {!isLast && <hr className="border-gray-100 w-full mt-1 sm:mt-2" />}
     </div>
   );
 }
@@ -63,14 +63,14 @@ function Sidebar({ isOpen, toggleSidebar, onNavigate }: SidebarProps) {
   const activePath = location.pathname;
 
   return (
-    <div className={`flex flex-col bg-white items-center justify-start h-screen fixed left-0 top-0 transition-all duration-300 ${isOpen ? 'w-72' : 'w-0'}`}>
+    <div className={`flex flex-col bg-white items-center justify-start h-screen fixed left-0 top-0 transition-all duration-300 z-50 shadow-lg ${isOpen ? 'w-64 sm:w-72' : 'w-0'} overflow-hidden`}>
       {isOpen && (
-        <div className="flex flex-col mt-2 z-[100] items-center justify-start h-full w-full">
+        <div className="flex flex-col mt-2 z-[100] items-center justify-start h-full w-full overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center justify-between w-full pr-8 pl-4 py-4">
-            <div className="flex text-xl text-gray-800 font-medium items-center w-full">
-              <Brain className="w-14 h-14 mr-2 text-gray-800" />
-              Lazy Notez
+          <div className="flex items-center justify-between w-full pr-4 sm:pr-8 pl-3 sm:pl-4 py-3 sm:py-4 border-b border-gray-100">
+            <div className="flex text-lg sm:text-xl text-gray-800 font-bold items-center w-full">
+              <Brain className="w-10 sm:w-14 h-10 sm:h-14 mr-2 text-primary-600" />
+              <span className="hidden sm:inline">Lazy Notez</span>
             </div>
           </div>
 

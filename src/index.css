@@ -5,13 +5,27 @@
 
 @layer base {
   body {
-    @apply antialiased text-gray-800 bg-white font-sans;
+    @apply antialiased text-gray-800 bg-white font-sans overflow-x-hidden;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Better touch targets for mobile */
+  button, a, input, textarea, select {
+    @apply touch-manipulation;
   }
 }
 
 @layer components {
   .container {
-    @apply max-w-7xl mx-auto;
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Responsive grid system */
+  .grid-auto {
+    @apply grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
   }
   
   /* 3D Transform Utilities */
@@ -76,15 +90,15 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 transition transform-gpu;
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-primary-600 hover:bg-primary-700 transition transform-gpu active:scale-95;
   }
 
   .card {
-    @apply bg-white rounded-xl p-6 shadow-card border border-gray-100;
+    @apply bg-white rounded-xl p-4 sm:p-6 shadow-card border border-gray-100;
   }
 
   .fab {
-    @apply fixed right-6 bottom-6 bg-primary-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform;
+    @apply fixed right-4 sm:right-6 bottom-4 sm:bottom-6 bg-primary-600 text-white w-12 sm:w-14 h-12 sm:h-14 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-95;
   }
 
   .grid-responsive {
@@ -112,4 +126,23 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
+  
+  /* Improve readability on small screens */
+  @media (max-width: 640px) {
+    .prose {
+      font-size: 0.875rem;
+    }
+  }
+}
+
+/* Improved touch interactions */
+.interactive {
+  opacity: 1;
+  transform: scale(1);
+  transition: all 150ms duration;
+}
+
+.interactive:active {
+  opacity: 0.8;
+  transform: scale(0.95);
 }
