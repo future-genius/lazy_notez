@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { authorizedFetch, getAccessToken } from '../utils/authSession';
 
 type Resource = {
   _id: string;
@@ -80,16 +81,14 @@ function ResourcesSubpage() {
 
   const handleDownload = async (resource: Resource) => {
     try {
-      const currentUserRaw = localStorage.getItem('currentUser');
-      const currentUser = currentUserRaw ? JSON.parse(currentUserRaw) : null;
-      const accessToken = currentUser?.accessToken || sessionStorage.getItem('lazyNotezAccessToken');
+      const accessToken = getAccessToken();
       if (!accessToken) {
         alert('Please login to download resources');
         navigate('/login');
         return;
       }
 
-      const res = await fetch(`${API_BASE}/resources/${resource._id}/download`, {
+      const res = await authorizedFetch(`${API_BASE}/resources/${resource._id}/download`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${accessToken}` }
       });

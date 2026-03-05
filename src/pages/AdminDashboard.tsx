@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Bell, FileText, LogOut, Menu, MessageSquare, Plus, RefreshCw, Search, Settings, Trash2, Upload, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Feedback from './Feedback';
+import { authorizedFetch, clearStoredAuth, getAccessToken } from '../utils/authSession';
 
 type AdminTab = 'dashboard' | 'users' | 'resources' | 'communities' | 'feedback' | 'settings';
 
@@ -48,16 +49,6 @@ const isAuthenticatedAdmin = () => {
   }
 };
 
-const getAccessToken = () => {
-  try {
-    const raw = localStorage.getItem('currentUser');
-    const user = raw ? JSON.parse(raw) : null;
-    return user?.accessToken || sessionStorage.getItem('lazyNotezAccessToken') || '';
-  } catch {
-    return '';
-  }
-};
-
 export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashboardProps) {
   const navigate = useNavigate();
   const [isAuthChecked, setIsAuthChecked] = useState(false);
@@ -83,7 +74,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   }, [isAuthChecked]);
 
   const loadUsers = async () => {
-    const res = await fetch(`${API_BASE}/users`, { headers: authHeaders });
+    const res = await authorizedFetch(`${API_BASE}/users`, { headers: authHeaders });
     if (!res.ok) throw new Error('Unable to load users');
     const data = await res.json();
     setUsers(data.users || []);
@@ -99,7 +90,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const loadStats = async () => {
     try {
       setLoadingStats(true);
-      const res = await fetch(`${API_BASE}/admin/stats`, { headers: authHeaders });
+      const res = await authorizedFetch(`${API_BASE}/admin/stats`, { headers: authHeaders });
       if (!res.ok) throw new Error('Failed to load stats');
       const data = await res.json();
       setStats(data);
@@ -132,20 +123,18 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await authorizedFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: authHeaders
       });
     } catch {}
-    localStorage.removeItem('lazyNotezAdmin');
-    localStorage.removeItem('currentUser');
-    sessionStorage.removeItem('lazyNotezAccessToken');
+    clearStoredAuth();
     window.location.replace('/');
   };
 
   const handleResyncUsers = async () => {
-    await fetch(`${API_BASE}/admin/resync-users`, {
+    await authorizedFetch(`${API_BASE}/admin/resync-users`, {
       method: 'POST',
       headers: authHeaders
     });
@@ -153,7 +142,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   };
 
   const handleUserUpdate = async (userId: string, updates: Partial<AdminUser>) => {
-    const res = await fetch(`${API_BASE}/users/${userId}`, {
+    const res = await authorizedFetch(`${API_BASE}/users/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(updates)
@@ -168,7 +157,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Delete this user?')) return;
-    const res = await fetch(`${API_BASE}/users/${userId}`, {
+    const res = await authorizedFetch(`${API_BASE}/users/${userId}`, {
       method: 'DELETE',
       headers: authHeaders
     });
@@ -191,7 +180,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       ...resourceForm,
       uploadedByName: resourceForm.uploadedByName || currentUser?.name || 'Admin'
     };
-    const res = await fetch(`${API_BASE}/resources`, {
+    const res = await authorizedFetch(`${API_BASE}/resources`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(payload)
@@ -214,7 +203,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   const handleDeleteResource = async (resourceId: string) => {
     if (!confirm('Delete this resource?')) return;
-    const res = await fetch(`${API_BASE}/resources/${resourceId}`, {
+    const res = await authorizedFetch(`${API_BASE}/resources/${resourceId}`, {
       method: 'DELETE',
       headers: authHeaders
     });

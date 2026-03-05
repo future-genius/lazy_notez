@@ -10,6 +10,7 @@ import Community from './pages/Community';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { getStoredUser } from './utils/googleAuth';
+import { refreshAccessToken } from './utils/authSession';
 
 const ADMIN_SESSION_KEY = 'lazyNotezAdmin';
 
@@ -163,6 +164,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const initializeSession = async () => {
     // Initialize default admin user - always ensure admin exists
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const adminExists = users.some((u: any) => u.username === 'admin');
@@ -190,6 +192,10 @@ function App() {
     if (currentUser) {
       try {
         const userData = JSON.parse(currentUser);
+        if (!userData?.accessToken) {
+          const refreshed = await refreshAccessToken().catch(() => '');
+          if (refreshed) userData.accessToken = refreshed;
+        }
         setUser(userData);
         setIsLoggedIn(true);
         if (userData?.accessToken) sessionStorage.setItem('lazyNotezAccessToken', userData.accessToken);
@@ -209,6 +215,8 @@ function App() {
       }
     }
     setIsLoading(false);
+    };
+    initializeSession();
   }, []);
 
   const handleLogin = (userData: any) => {
@@ -218,6 +226,8 @@ function App() {
   };
 
   const handleLogout = () => {
+    const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+    fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
     localStorage.removeItem('currentUser');
     localStorage.removeItem(ADMIN_SESSION_KEY);
     sessionStorage.removeItem('lazyNotezAccessToken');
