@@ -11,8 +11,14 @@ export const validateRegister = [
 ];
 
 export const validateLogin = [
-  body('username').trim().notEmpty().withMessage('Username required'),
+  body('identifier').optional().trim().notEmpty().withMessage('Identifier required'),
+  body('username').optional().trim().notEmpty(),
+  body('email').optional().isEmail().normalizeEmail(),
   body('password').notEmpty().withMessage('Password required')
+];
+
+export const validateGoogleLogin = [
+  body('token').trim().notEmpty().withMessage('Google token is required')
 ];
 
 export const validateCreateNote = [
@@ -24,14 +30,18 @@ export const validateCreateNote = [
 export const validateUpdateUser = [
   body('name').optional().trim().isLength({ min: 2, max: 100 }),
   body('email').optional().isEmail().normalizeEmail(),
-  body('role').optional().isIn(['admin', 'faculty', 'student', 'user']),
+  body('role').optional().isIn(['super_admin', 'admin', 'faculty', 'student', 'user']),
   body('status').optional().isIn(['active', 'inactive'])
 ];
 
 export const validateCreateResource = [
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title required'),
+  body('department').trim().notEmpty().withMessage('Department required'),
+  body('semester').trim().notEmpty().withMessage('Semester required'),
+  body('subject').trim().notEmpty().withMessage('Subject required'),
+  body('googleDriveUrl').isURL().withMessage('Invalid Google Drive URL'),
+  body('uploadedByName').optional().trim().isLength({ min: 1, max: 200 }),
   body('description').optional().trim().isLength({ max: 5000 }),
-  body('url').optional().isURL().withMessage('Invalid URL'),
   body('tags').optional().isArray()
 ];
 

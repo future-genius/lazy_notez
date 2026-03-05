@@ -16,7 +16,7 @@ export default function FeedbackPage() {
     const currentUserRaw = localStorage.getItem('currentUser');
     try {
       const cu = JSON.parse(currentUserRaw || 'null');
-      setIsAdmin(cu && cu.role === 'admin');
+      setIsAdmin(cu && (cu.role === 'admin' || cu.role === 'super_admin'));
     } catch (e) {
       setIsAdmin(false);
     }

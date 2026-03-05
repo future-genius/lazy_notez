@@ -1,12 +1,12 @@
 import express from 'express';
-import { verifyAccessToken, requireRole } from '../middleware/authMiddleware';
+import { verifyAccessToken, requireAdminAccess } from '../middleware/authMiddleware';
 import { getActivityLogs, getSystemStats, updateAbout, getAbout, deleteNoteAdmin, clearActivityLogs, submitFeedback, listFeedback, deleteFeedback, resyncUsers } from '../controllers/adminController';
 import { validateAbout, handleValidationErrors } from '../utils/validators';
 
 const router = express.Router();
 
 router.use(verifyAccessToken);
-router.use(requireRole('admin'));
+router.use(requireAdminAccess);
 
 router.get('/activity', getActivityLogs);
 router.get('/stats', getSystemStats);

@@ -52,13 +52,19 @@ function Register({ onRegister }: RegisterProps) {
       if (res.ok) {
         const data = await res.json();
         const current = { ...data.user, accessToken: data.accessToken };
+        if (current.accessToken) sessionStorage.setItem('lazyNotezAccessToken', current.accessToken);
+        if (current.role === 'admin' || current.role === 'super_admin') {
+          localStorage.setItem('lazyNotezAdmin', 'true');
+        } else {
+          localStorage.removeItem('lazyNotezAdmin');
+        }
         // store lightweight user locally for legacy flows
         const users = JSON.parse(localStorage.getItem('users') || '[]');
-        users.push({ id: current.id || current._id || Date.now().toString(), name: formData.name, username: formData.username, email: formData.email, college: formData.college, department: formData.department, univRegNo: formData.univRegNo, role: current.role || formData.role, password: formData.password, status: 'active', createdAt: new Date().toISOString() });
+        users.push({ id: current.id || current._id || Date.now().toString(), name: formData.name, username: formData.username, email: formData.email, college: formData.college, department: formData.department, univRegNo: formData.univRegNo, role: current.role || formData.role, loginMethod: current.login_method || 'manual', password: formData.password, status: 'active', createdAt: new Date().toISOString(), lastLogin: current.last_login, registrationDate: current.registration_date });
         localStorage.setItem('users', JSON.stringify(users));
         localStorage.setItem('currentUser', JSON.stringify(current));
         onRegister(current);
-        navigate('/home');
+        navigate(current.role === 'admin' || current.role === 'super_admin' ? '/admin/dashboard' : '/home', { replace: true });
       } else {
         const err = await res.json().catch(() => null);
         // fallback to localStorage registration if backend rejects
@@ -79,8 +85,9 @@ function Register({ onRegister }: RegisterProps) {
         users.push(userData);
         localStorage.setItem('users', JSON.stringify(users));
         localStorage.setItem('currentUser', JSON.stringify(userData));
+        localStorage.removeItem('lazyNotezAdmin');
         onRegister(userData);
-        navigate('/home');
+        navigate('/home', { replace: true });
       }
     }).catch(() => {
       // network error -> fallback to local
@@ -101,8 +108,9 @@ function Register({ onRegister }: RegisterProps) {
       users.push(userData);
       localStorage.setItem('users', JSON.stringify(users));
       localStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorage.removeItem('lazyNotezAdmin');
       onRegister(userData);
-      navigate('/home');
+      navigate('/home', { replace: true });
     });
   };
 

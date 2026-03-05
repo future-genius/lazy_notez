@@ -1,14 +1,15 @@
 import express from 'express';
-import { verifyAccessToken, requireRole } from '../middleware/authMiddleware';
-import { createResource, listResources, updateResource, deleteResource } from '../controllers/resourceController';
+import { verifyAccessToken, requireAnyRole } from '../middleware/authMiddleware';
+import { createResource, listResources, updateResource, deleteResource, trackResourceDownload } from '../controllers/resourceController';
 import { validateCreateResource, handleValidationErrors } from '../utils/validators';
 
 const router = express.Router();
 
 router.get('/', listResources);
+router.post('/:id/download', verifyAccessToken, trackResourceDownload);
 router.use(verifyAccessToken);
-router.post('/', requireRole('faculty'), validateCreateResource, handleValidationErrors, createResource);
-router.put('/:id', requireRole('faculty'), updateResource);
-router.delete('/:id', requireRole('faculty'), deleteResource);
+router.post('/', requireAnyRole(['admin', 'faculty']), validateCreateResource, handleValidationErrors, createResource);
+router.put('/:id', requireAnyRole(['admin', 'faculty']), updateResource);
+router.delete('/:id', requireAnyRole(['admin', 'faculty']), deleteResource);
 
 export default router;

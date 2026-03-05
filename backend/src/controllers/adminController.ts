@@ -4,6 +4,7 @@ import About from '../models/About';
 import Note from '../models/Note';
 import User from '../models/User';
 import Feedback from '../models/Feedback';
+import Resource from '../models/Resource';
 import sanitizeHtml from 'sanitize-html';
 import { getIO } from '../utils/socket';
 
@@ -29,16 +30,33 @@ export const getSystemStats = async (_req: Request, res: Response) => {
   try {
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ status: 'active' });
-    const adminCount = await User.countDocuments({ role: 'admin' });
+    const adminCount = await User.countDocuments({ role: { $in: ['admin', 'super_admin'] } });
+    const superAdminCount = await User.countDocuments({ role: 'super_admin' });
     const totalNotes = await Note.countDocuments();
+    const totalResources = await Resource.countDocuments();
+    const totalDownloadsAgg = await Resource.aggregate([
+      { $group: { _id: null, total: { $sum: '$downloadCount' } } }
+    ]);
+    const totalDownloads = totalDownloadsAgg[0]?.total || 0;
     const totalLogs = await ActivityLog.countDocuments();
+    const recentLogins = await ActivityLog.find({ action: { $in: ['login.manual', 'login.google'] } })
+      .populate('user', 'name username email role loginMethod lastLogin')
+      .sort({ createdAt: -1 })
+      .limit(30);
+    const activeSince = new Date(Date.now() - 15 * 60 * 1000);
+    const currentlyActiveUsers = await User.countDocuments({ lastLogin: { $gte: activeSince }, status: 'active' });
     
     res.json({
       totalUsers,
       activeUsers,
+      currentlyActiveUsers,
       adminCount,
+      superAdminCount,
       totalNotes,
-      totalLogs
+      totalResources,
+      totalDownloads,
+      totalLogs,
+      recentLogins
     });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch system stats' });
@@ -172,16 +190,20 @@ export const resyncUsers = async (_req: Request, res: Response) => {
       if (io) {
         const payload = users.map(u => ({
           _id: u._id,
+          userId: (u as any).userId,
           name: u.name,
           username: u.username,
           email: u.email,
           role: u.role,
           status: u.status,
+          loginMethod: (u as any).loginMethod,
+          lastLogin: (u as any).lastLogin,
+          registrationDate: (u as any).registrationDate,
           department: u.department,
           universityRegisterNumber: u.universityRegisterNumber,
           createdAt: u.createdAt
         }));
-        io.emit('users.resync', payload);
+        io.emit('users.resync', { users: payload });
       }
     } catch (e) {
       console.warn('Failed to emit resync event', e);

@@ -19,10 +19,12 @@ export default function AuthSignIn({ onLogin }: Props) {
       localStorage.setItem('currentUser', JSON.stringify(user));
       onLogin(user);
       // Redirect to admin dashboard if user is admin, otherwise go to home
-      if (user.role === 'admin') {
-        navigate('/admin');
+      if (user.role === 'admin' || user.role === 'super_admin') {
+        localStorage.setItem('lazyNotezAdmin', 'true');
+        window.location.replace('/admin/dashboard');
       } else {
-        navigate('/home');
+        localStorage.removeItem('lazyNotezAdmin');
+        navigate('/home', { replace: true });
       }
     } else {
       alert('Invalid credentials');

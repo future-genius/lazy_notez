@@ -11,6 +11,33 @@ import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { getStoredUser } from './utils/googleAuth';
 
+const ADMIN_SESSION_KEY = 'lazyNotezAdmin';
+
+const setAdminSession = (isAdmin: boolean) => {
+  if (isAdmin) {
+    localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    return;
+  }
+  localStorage.removeItem(ADMIN_SESSION_KEY);
+};
+
+const hasValidAdminSession = () => {
+  if (localStorage.getItem(ADMIN_SESSION_KEY) !== 'true') return false;
+  const currentUserRaw = localStorage.getItem('currentUser');
+  if (!currentUserRaw) return false;
+
+  try {
+    const currentUser = JSON.parse(currentUserRaw);
+    return currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+  } catch {
+    return false;
+  }
+};
+
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  return hasValidAdminSession() ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
 function Login({ onLogin }: { onLogin: (userData: any) => void }) {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
@@ -19,6 +46,20 @@ function Login({ onLogin }: { onLogin: (userData: any) => void }) {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     const API_BASE = (window as any).__API_BASE__ || 'http://localhost:4000/api';
+    const finalizeLogin = (current: any) => {
+      localStorage.setItem('currentUser', JSON.stringify(current));
+      if (current?.accessToken) {
+        sessionStorage.setItem('lazyNotezAccessToken', current.accessToken);
+      }
+      onLogin(current);
+      if (current?.role === 'admin' || current?.role === 'super_admin') {
+        localStorage.setItem(ADMIN_SESSION_KEY, 'true');
+        window.location.replace('/admin/dashboard');
+        return;
+      }
+      localStorage.removeItem(ADMIN_SESSION_KEY);
+      navigate('/home', { replace: true });
+    };
 
     // Try backend login first
     fetch(`${API_BASE}/auth/login`, {
@@ -30,17 +71,13 @@ function Login({ onLogin }: { onLogin: (userData: any) => void }) {
       if (res.ok) {
         const data = await res.json();
         const current = { ...data.user, accessToken: data.accessToken };
-        localStorage.setItem('currentUser', JSON.stringify(current));
-        onLogin(current);
-        navigate('/home');
+        finalizeLogin(current);
       } else {
         // fallback to localStorage-based auth
         const users = JSON.parse(localStorage.getItem('users') || '[]');
         const user = users.find((u: any) => u.username === username && u.password === password);
         if (user) {
-          localStorage.setItem('currentUser', JSON.stringify(user));
-          onLogin(user);
-          navigate('/home');
+          finalizeLogin(user);
         } else {
           const err = await res.json().catch(() => null);
           alert(err?.message || 'Invalid credentials');
@@ -51,9 +88,7 @@ function Login({ onLogin }: { onLogin: (userData: any) => void }) {
       const users = JSON.parse(localStorage.getItem('users') || '[]');
       const user = users.find((u: any) => u.username === username && u.password === password);
       if (user) {
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        onLogin(user);
-        navigate('/home');
+        finalizeLogin(user);
       } else {
         alert('Invalid credentials (offline)');
       }
@@ -157,9 +192,12 @@ function App() {
         const userData = JSON.parse(currentUser);
         setUser(userData);
         setIsLoggedIn(true);
+        if (userData?.accessToken) sessionStorage.setItem('lazyNotezAccessToken', userData.accessToken);
+        setAdminSession(userData?.role === 'admin' || userData?.role === 'super_admin');
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('currentUser');
+        localStorage.removeItem(ADMIN_SESSION_KEY);
       }
     } else {
       // Check for Google login user
@@ -167,6 +205,7 @@ function App() {
       if (googleUser) {
         setUser(googleUser);
         setIsLoggedIn(true);
+        setAdminSession(googleUser?.role === 'admin' || googleUser?.role === 'super_admin');
       }
     }
     setIsLoading(false);
@@ -175,10 +214,13 @@ function App() {
   const handleLogin = (userData: any) => {
     setUser(userData);
     setIsLoggedIn(true);
+    setAdminSession(userData?.role === 'admin' || userData?.role === 'super_admin');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    sessionStorage.removeItem('lazyNotezAccessToken');
     setUser(null);
     setIsLoggedIn(false);
   };
@@ -195,7 +237,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
       <Route path="/auth" element={!isLoggedIn ? <Auth onLogin={handleLogin} /> : <Navigate to="/home" />} />
-      <Route path="/login" element={!isLoggedIn ? <Login onLogin={handleLogin} /> : <Navigate to="/home" />} />
+      <Route path="/login" element={!isLoggedIn ? <Login onLogin={handleLogin} /> : <Navigate to={user?.role === 'admin' || user?.role === 'super_admin' ? '/admin/dashboard' : '/home'} replace />} />
       <Route path="/register" element={!isLoggedIn ? <Register onRegister={handleLogin} /> : <Navigate to="/home" />} />
       <Route path="/home" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
       <Route path="/dashboard" element={isLoggedIn ? <Dashboard user={user} onLogout={handleLogout} /> : <Navigate to="/" />} />
@@ -203,7 +245,14 @@ function App() {
       <Route path="/community" element={isLoggedIn ? <Community /> : <Navigate to="/" />} />
       <Route path="/about" element={<AboutUs />} />
       <Route path="/landing" element={<LandingPage />} />
-      <Route path="/admin" element={isLoggedIn && user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
+      <Route path="/admin" element={<AdminProtectedRoute><Navigate to="/admin/dashboard" replace /></AdminProtectedRoute>} />
+      <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard initialTab="dashboard" /></AdminProtectedRoute>} />
+      <Route path="/admin/users" element={<AdminProtectedRoute><AdminDashboard initialTab="users" /></AdminProtectedRoute>} />
+      <Route path="/admin/resources" element={<AdminProtectedRoute><AdminDashboard initialTab="resources" /></AdminProtectedRoute>} />
+      <Route path="/admin/communities" element={<AdminProtectedRoute><AdminDashboard initialTab="communities" /></AdminProtectedRoute>} />
+      <Route path="/admin/feedback" element={<AdminProtectedRoute><AdminDashboard initialTab="feedback" /></AdminProtectedRoute>} />
+      <Route path="/admin/settings" element={<AdminProtectedRoute><AdminDashboard initialTab="settings" /></AdminProtectedRoute>} />
+      <Route path="/admin/*" element={<AdminProtectedRoute><Navigate to="/admin/dashboard" replace /></AdminProtectedRoute>} />
     </Routes>
   );
 }

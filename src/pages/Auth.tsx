@@ -81,7 +81,13 @@ export default function Auth({ onLogin }: AuthProps) {
             <GoogleLoginButton
               onLogin={(userData) => {
                 onLogin(userData);
-                navigate('/dashboard');
+                if (userData?.role === 'admin' || userData?.role === 'super_admin') {
+                  localStorage.setItem('lazyNotezAdmin', 'true');
+                  window.location.replace('/admin/dashboard');
+                  return;
+                }
+                localStorage.removeItem('lazyNotezAdmin');
+                navigate('/dashboard', { replace: true });
               }}
               onError={(error) => {
                 console.error('Google login error:', error);
