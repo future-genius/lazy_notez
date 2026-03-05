@@ -9,6 +9,7 @@ import AboutUs from './pages/AboutUs';
 import Community from './pages/Community';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
+import { getStoredUser } from './utils/googleAuth';
 
 function Login({ onLogin }: { onLogin: (userData: any) => void }) {
   const navigate = useNavigate();
@@ -149,6 +150,7 @@ function App() {
       localStorage.setItem('users', JSON.stringify(users));
     }
 
+    // Check for existing user (including Google OAuth users)
     const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
       try {
@@ -158,6 +160,13 @@ function App() {
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('currentUser');
+      }
+    } else {
+      // Check for Google login user
+      const googleUser = getStoredUser();
+      if (googleUser) {
+        setUser(googleUser);
+        setIsLoggedIn(true);
       }
     }
     setIsLoading(false);

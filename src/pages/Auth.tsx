@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import AuthSignIn from '../components/AuthSignIn';
 import AuthRegister from '../components/AuthRegister';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 interface AuthProps {
   onLogin: (userData: any) => void;
@@ -73,6 +74,19 @@ export default function Auth({ onLogin }: AuthProps) {
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">or</span>
             </div>
+          </div>
+
+          {/* Google Login Button */}
+          <div className="mb-6">
+            <GoogleLoginButton
+              onLogin={(userData) => {
+                onLogin(userData);
+                navigate('/dashboard');
+              }}
+              onError={(error) => {
+                console.error('Google login error:', error);
+              }}
+            />
           </div>
 
           {/* Continue as Guest */}
