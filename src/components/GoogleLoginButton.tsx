@@ -11,16 +11,28 @@ type Props = {
 
 export default function GoogleLoginButton({ onLogin, onError }: Props) {
   useEffect(() => {
-    // Initialize Google Auth
-    initializeGoogleAuth(onLogin, onError);
+    let mounted = true;
+    let retryTimer: any = null;
+    let attempts = 0;
 
-    // Render the Google Sign-In button
-    // We use a small delay to ensure the DOM is ready
-    const timer = setTimeout(() => {
-      renderGoogleSignInButton('google-login-button', 'outline', 'large');
-    }, 100);
+    const setupGoogleButton = async () => {
+      if (!mounted) return;
+      const initialized = await initializeGoogleAuth(onLogin, onError);
+      if (!initialized) return;
 
-    return () => clearTimeout(timer);
+      const rendered = await renderGoogleSignInButton('google-login-button', 'outline', 'large');
+      if (!rendered && attempts < 10) {
+        attempts += 1;
+        retryTimer = setTimeout(setupGoogleButton, 300);
+      }
+    };
+
+    setupGoogleButton();
+
+    return () => {
+      mounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [onLogin, onError]);
 
   return (
