@@ -1,6 +1,7 @@
 const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
 
 const USER_STORAGE_KEY = 'currentUser';
+const LEGACY_USER_STORAGE_KEY = 'lazyNotezUser';
 const ADMIN_STORAGE_KEY = 'lazyNotezAdmin';
 const ACCESS_TOKEN_KEY = 'lazyNotezAccessToken';
 
@@ -18,7 +19,7 @@ export type SessionUser = {
 const isAdminRole = (role?: string) => role === 'admin' || role === 'super_admin';
 
 export function getStoredCurrentUser(): SessionUser | null {
-  const raw = localStorage.getItem(USER_STORAGE_KEY);
+  const raw = localStorage.getItem(USER_STORAGE_KEY) || localStorage.getItem(LEGACY_USER_STORAGE_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -29,6 +30,7 @@ export function getStoredCurrentUser(): SessionUser | null {
 
 export function setStoredCurrentUser(user: SessionUser) {
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  localStorage.setItem(LEGACY_USER_STORAGE_KEY, JSON.stringify(user));
   if (user?.accessToken) {
     sessionStorage.setItem(ACCESS_TOKEN_KEY, user.accessToken);
   } else {
@@ -44,6 +46,7 @@ export function setStoredCurrentUser(user: SessionUser) {
 
 export function clearStoredAuth() {
   localStorage.removeItem(USER_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
   localStorage.removeItem(ADMIN_STORAGE_KEY);
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 }

@@ -20,7 +20,8 @@ export default function GoogleLoginButton({ onLogin, onError }: Props) {
       const initialized = await initializeGoogleAuth(onLogin, onError);
       if (!initialized) return;
 
-      const rendered = await renderGoogleSignInButton('google-login-button', 'outline', 'large');
+      const isSmallScreen = window.matchMedia('(max-width: 420px)').matches;
+      const rendered = await renderGoogleSignInButton('google-login-button', 'outline', isSmallScreen ? 'medium' : 'large');
       if (!rendered && attempts < 10) {
         attempts += 1;
         retryTimer = setTimeout(setupGoogleButton, 300);
@@ -38,7 +39,7 @@ export default function GoogleLoginButton({ onLogin, onError }: Props) {
   return (
     <div
       id="google-login-button"
-      className="flex justify-center"
+      className="flex justify-center w-full overflow-x-auto sm:overflow-visible"
       data-testid="google-login-button"
     />
   );

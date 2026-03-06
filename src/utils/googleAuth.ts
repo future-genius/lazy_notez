@@ -1,9 +1,10 @@
-import { clearStoredAuth, setStoredCurrentUser } from './authSession';
+import { clearStoredAuth, getStoredCurrentUser, setStoredCurrentUser } from './authSession';
 
 const GOOGLE_CLIENT_ID =
   (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
   '702960286853-skkvdqed3ajop543nkjih3ubd345ct50.apps.googleusercontent.com';
 const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
+const NETLIFY_GOOGLE_AUTH_ENDPOINT = '/.netlify/functions/google-auth';
 let googleScriptPromise: Promise<void> | null = null;
 
 function ensureGoogleScriptLoaded() {
@@ -39,12 +40,7 @@ export function storeUser(user: any) {
 }
 
 export function getStoredUser() {
-  try {
-    const raw = localStorage.getItem('currentUser');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return getStoredCurrentUser();
 }
 
 export function logout() {
@@ -61,19 +57,30 @@ export async function handleGoogleCredentialResponse(
     const token = response?.credential;
     if (!token) throw new Error('Google token missing');
 
-    const res = await fetch(`${API_BASE}/auth/google`, {
+    const postBody = JSON.stringify({ token });
+    let res = await fetch(NETLIFY_GOOGLE_AUTH_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ token })
+      body: postBody
     });
+
+    if (!res.ok) {
+      // Development fallback if Netlify function is unavailable.
+      res = await fetch(`${API_BASE}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: postBody
+      });
+    }
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err?.message || 'Google sign-in failed');
     }
 
-    const data = await res.json();
-    const currentUser = { ...data.user, accessToken: data.accessToken };
+    const data = await res.json().catch(() => ({}));
+    const currentUser = { ...data.user, ...(data.accessToken ? { accessToken: data.accessToken } : {}) };
     const stored = storeUser(currentUser);
     onSuccess(stored);
   } catch (error) {
