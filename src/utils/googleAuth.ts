@@ -1,6 +1,8 @@
 import { clearStoredAuth, setStoredCurrentUser } from './authSession';
 
-const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID =
+  (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
+  '702960286853-skkvdqed3ajop543nkjih3ubd345ct50.apps.googleusercontent.com';
 const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
 let googleScriptPromise: Promise<void> | null = null;
 
