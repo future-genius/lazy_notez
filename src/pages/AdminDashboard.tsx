@@ -103,23 +103,15 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   useEffect(() => {
     if (!isAuthenticatedAdmin()) {
-      window.location.replace('/login');
+      navigate('/auth', { replace: true });
       return;
     }
-
-    window.history.pushState(null, '', window.location.href);
-    const preventBackNavigation = () => window.history.go(1);
-    window.addEventListener('popstate', preventBackNavigation);
 
     setIsAuthChecked(true);
     loadUsers().catch(() => {});
     loadResources().catch(() => {});
     loadStats().catch(() => {});
-
-    return () => {
-      window.removeEventListener('popstate', preventBackNavigation);
-    };
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -130,7 +122,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       });
     } catch {}
     clearStoredAuth();
-    window.location.replace('/');
+    navigate('/', { replace: true });
   };
 
   const handleResyncUsers = async () => {

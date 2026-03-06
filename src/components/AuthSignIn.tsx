@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
+import { loginWithPassword } from '../utils/authSession';
 
 type Props = {
   onLogin: (userData: any) => void;
@@ -10,24 +11,26 @@ export default function AuthSignIn({ onLogin }: Props) {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find((u: any) => u.username === username && u.password === password);
-    if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const user = await loginWithPassword(username.trim(), password);
       onLogin(user);
-      // Redirect to admin dashboard if user is admin, otherwise go to home
-      if (user.role === 'admin' || user.role === 'super_admin') {
-        localStorage.setItem('lazyNotezAdmin', 'true');
-        window.location.replace('/admin/dashboard');
-      } else {
-        localStorage.removeItem('lazyNotezAdmin');
-        navigate('/home', { replace: true });
+      if (user?.role === 'admin' || user?.role === 'super_admin') {
+        navigate('/admin', { replace: true });
+        return;
       }
-    } else {
-      alert('Invalid credentials');
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setError(err?.message || 'Sign in failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -66,8 +69,12 @@ export default function AuthSignIn({ onLogin }: Props) {
         </div>
       </div>
 
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
       <div className="flex items-center justify-between">
-        <button className="btn-primary w-full">Sign In</button>
+        <button disabled={isSubmitting} className="btn-primary w-full disabled:opacity-50">
+          {isSubmitting ? 'Signing in...' : 'Sign In'}
+        </button>
       </div>
     </form>
   );

@@ -27,6 +27,22 @@ const signRefreshToken = (userId: string) => {
   return jwt.sign({ sub: userId }, secret, { expiresIn });
 };
 
+const getCookieOptions = () => {
+  const secure = process.env.COOKIE_SECURE === 'true';
+  const sameSiteEnv = (process.env.COOKIE_SAME_SITE || '').toLowerCase();
+  const sameSite = sameSiteEnv === 'none' || sameSiteEnv === 'strict' || sameSiteEnv === 'lax'
+    ? sameSiteEnv
+    : (secure ? 'none' : 'lax');
+
+  return {
+    httpOnly: true,
+    sameSite: sameSite as 'none' | 'lax' | 'strict',
+    secure,
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    path: '/'
+  };
+};
+
 const generateUserId = () => `usr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 const sanitizeEmail = (email?: string) => sanitizeHtml(email || '').trim().toLowerCase();
@@ -43,13 +59,7 @@ const issueAuthTokens = async (user: any, res: Response) => {
   user.refreshTokens.push(refreshToken);
   await user.save();
 
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.COOKIE_SECURE === 'true',
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-    path: '/'
-  });
+  res.cookie('refreshToken', refreshToken, getCookieOptions());
 
   return accessToken;
 };
@@ -265,13 +275,7 @@ export const refresh = async (req: Request, res: Response) => {
     await blacklistToken(token, expiresIn);
 
     const accessToken = signAccessToken(user._id.toString());
-    res.cookie('refreshToken', newRefresh, {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.COOKIE_SECURE === 'true',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-      path: '/'
-    });
+    res.cookie('refreshToken', newRefresh, getCookieOptions());
 
     res.json({ accessToken });
   } catch (err: any) {
@@ -301,7 +305,7 @@ export const logout = async (req: Request, res: Response) => {
       }
     }
 
-    res.clearCookie('refreshToken', { path: '/' });
+    res.clearCookie('refreshToken', getCookieOptions());
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Logout failed' });

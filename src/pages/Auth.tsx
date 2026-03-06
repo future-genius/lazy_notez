@@ -12,6 +12,7 @@ interface AuthProps {
 export default function Auth({ onLogin }: AuthProps) {
   const navigate = useNavigate();
   const [authTab, setAuthTab] = useState<'signIn' | 'register'>('signIn');
+  const [googleError, setGoogleError] = useState('');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
@@ -80,19 +81,20 @@ export default function Auth({ onLogin }: AuthProps) {
           <div className="mb-6">
             <GoogleLoginButton
               onLogin={(userData) => {
+                setGoogleError('');
                 onLogin(userData);
                 if (userData?.role === 'admin' || userData?.role === 'super_admin') {
-                  localStorage.setItem('lazyNotezAdmin', 'true');
-                  window.location.replace('/admin/dashboard');
+                  navigate('/admin', { replace: true });
                   return;
                 }
-                localStorage.removeItem('lazyNotezAdmin');
                 navigate('/dashboard', { replace: true });
               }}
               onError={(error) => {
                 console.error('Google login error:', error);
+                setGoogleError(error?.message || 'Google sign-in failed. Please try again.');
               }}
             />
+            {googleError && <p className="mt-3 text-sm text-red-600 text-center">{googleError}</p>}
           </div>
 
           {/* Continue as Guest */}

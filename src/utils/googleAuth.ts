@@ -1,5 +1,6 @@
-const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '702960286853-skkvdqed3ajop543nkjih3ubd345ct50.apps.googleusercontent.com';
+import { clearStoredAuth, setStoredCurrentUser } from './authSession';
 
+const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
 const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
 let googleScriptPromise: Promise<void> | null = null;
 
@@ -31,32 +32,21 @@ function ensureGoogleScriptLoaded() {
 }
 
 export function storeUser(user: any) {
-  localStorage.setItem('currentUser', JSON.stringify(user));
-  if (user?.accessToken) {
-    sessionStorage.setItem('lazyNotezAccessToken', user.accessToken);
-  }
-  if (user?.role === 'admin' || user?.role === 'super_admin') {
-    localStorage.setItem('lazyNotezAdmin', 'true');
-  } else {
-    localStorage.removeItem('lazyNotezAdmin');
-  }
+  setStoredCurrentUser(user);
   return user;
 }
 
 export function getStoredUser() {
-  const raw = localStorage.getItem('currentUser');
-  if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const raw = localStorage.getItem('currentUser');
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
 export function logout() {
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('lazyNotezAdmin');
-  sessionStorage.removeItem('lazyNotezAccessToken');
+  clearStoredAuth();
   location.replace('/');
 }
 
@@ -95,6 +85,9 @@ export async function initializeGoogleAuth(
   onError?: (error: any) => void
 ) {
   try {
+    if (!GOOGLE_CLIENT_ID) {
+      throw new Error('Missing VITE_GOOGLE_CLIENT_ID');
+    }
     await ensureGoogleScriptLoaded();
     if (!(window as any).google?.accounts?.id) return false;
     (window as any).google.accounts.id.initialize({

@@ -109,11 +109,11 @@ function ResourcesSubpage() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6 sm:py-8">
         <button
-          onClick={() => navigate('/home')}
+          onClick={() => navigate('/dashboard')}
           className="mb-6 sm:mb-8 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
-          Back to Home
+          Back to Dashboard
         </button>
 
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 mb-6">

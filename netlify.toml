@@ -8,12 +8,6 @@
   # Frontend build environment variables
   NODE_VERSION = "18"
   
-[[redirects]]
-  # React Router SPA redirect - send all non-file requests to index.html
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
 [[headers]]
   # Security headers
   for = "/*"
@@ -36,9 +30,14 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Proxy API requests to backend
 [[redirects]]
   from = "/api/*"
   to = "https://your-backend-url/api/:splat"
   status = 200
   force = false
+
+[[redirects]]
+  # React Router SPA redirect - send all non-file requests to index.html
+  from = "/*"
+  to = "/index.html"
+  status = 200
