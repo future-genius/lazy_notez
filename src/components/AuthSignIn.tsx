@@ -9,7 +9,7 @@ type Props = {
 
 export default function AuthSignIn({ onLogin }: Props) {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -20,13 +20,9 @@ export default function AuthSignIn({ onLogin }: Props) {
     setIsSubmitting(true);
 
     try {
-      const user = await loginWithPassword(username.trim(), password);
+      const user = await loginWithPassword(identifier.trim(), password);
       onLogin(user);
-      if (user?.role === 'admin' || user?.role === 'super_admin') {
-        navigate('/admin', { replace: true });
-        return;
-      }
-      navigate('/dashboard', { replace: true });
+      navigate(user?.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
     } catch (err: any) {
       setError(err?.message || 'Sign in failed');
     } finally {
@@ -37,17 +33,17 @@ export default function AuthSignIn({ onLogin }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Username</label>
+        <label className="block text-sm font-medium text-gray-700">Email or Username</label>
         <div className="mt-1 relative rounded-md shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <User className="w-4 h-4 text-gray-400" />
           </div>
           <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             required
             className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            placeholder="username"
+            placeholder="you@example.com"
           />
         </div>
       </div>

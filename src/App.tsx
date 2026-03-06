@@ -10,13 +10,17 @@ import Community from './pages/Community';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { initializeAuthSession, logoutSession, SessionUser } from './utils/authSession';
+import { ADMIN_EMAIL } from './utils/localDb';
 
 const ADMIN_SESSION_KEY = 'lazyNotezAdmin';
 
-const isAdmin = (role?: string) => role === 'admin' || role === 'super_admin';
+const isAdmin = (user?: SessionUser | null) => {
+  if (!user) return false;
+  return user.role === 'admin' && user.email?.toLowerCase() === ADMIN_EMAIL;
+};
 
-function ProtectedRoute({ isAllowed, children }: { isAllowed: boolean; children: React.ReactNode }) {
-  return isAllowed ? <>{children}</> : <Navigate to="/auth" replace />;
+function ProtectedRoute({ isAllowed, children, redirectTo = '/auth' }: { isAllowed: boolean; children: React.ReactNode; redirectTo?: string }) {
+  return isAllowed ? <>{children}</> : <Navigate to={redirectTo} replace />;
 }
 
 function App() {
@@ -51,7 +55,7 @@ function App() {
   const handleLogin = (userData: SessionUser) => {
     setUser(userData);
     setIsLoggedIn(true);
-    if (isAdmin(userData?.role)) {
+    if (isAdmin(userData)) {
       localStorage.setItem(ADMIN_SESSION_KEY, 'true');
     } else {
       localStorage.removeItem(ADMIN_SESSION_KEY);
@@ -76,7 +80,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
-      <Route path="/auth" element={!isLoggedIn ? <Auth onLogin={handleLogin} /> : <Navigate to={isAdmin(user?.role) ? '/admin' : '/dashboard'} replace />} />
+      <Route path="/auth" element={!isLoggedIn ? <Auth onLogin={handleLogin} /> : <Navigate to={isAdmin(user) ? '/admin' : '/dashboard'} replace />} />
       <Route path="/login" element={<Navigate to="/auth" replace />} />
       <Route path="/register" element={!isLoggedIn ? <Register onRegister={handleLogin} /> : <Navigate to="/dashboard" replace />} />
       <Route path="/home" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
@@ -86,14 +90,14 @@ function App() {
       <Route path="/community" element={<ProtectedRoute isAllowed={isLoggedIn}><Community /></ProtectedRoute>} />
       <Route path="/about" element={<AboutUs />} />
       <Route path="/landing" element={<LandingPage />} />
-      <Route path="/admin" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
-      <Route path="/admin/dashboard" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="dashboard" /></ProtectedRoute>} />
-      <Route path="/admin/users" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="users" /></ProtectedRoute>} />
-      <Route path="/admin/resources" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="resources" /></ProtectedRoute>} />
-      <Route path="/admin/communities" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="communities" /></ProtectedRoute>} />
-      <Route path="/admin/feedback" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="feedback" /></ProtectedRoute>} />
-      <Route path="/admin/settings" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><AdminDashboard initialTab="settings" /></ProtectedRoute>} />
-      <Route path="/admin/*" element={<ProtectedRoute isAllowed={isAdmin(user?.role)}><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
+      <Route path="/admin/dashboard" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="dashboard" /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="users" /></ProtectedRoute>} />
+      <Route path="/admin/resources" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="resources" /></ProtectedRoute>} />
+      <Route path="/admin/communities" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
+      <Route path="/admin/feedback" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
+      <Route path="/admin/*" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to={isLoggedIn ? '/dashboard' : '/'} replace />} />
     </Routes>
   );

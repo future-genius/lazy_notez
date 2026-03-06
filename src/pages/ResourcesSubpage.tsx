@@ -1,219 +1,163 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Download } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronLeft, Download, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { authorizedFetch, getAccessToken } from '../utils/authSession';
+import { getStoredCurrentUser } from '../utils/authSession';
+import { AppResource, getResources, incrementDownload } from '../utils/localDb';
 
-type Resource = {
-  _id: string;
-  department: string;
-  semester: string;
-  subject: string;
-  title: string;
-  googleDriveUrl: string;
-  uploadedByName: string;
-  downloadCount: number;
-  createdAt: string;
-};
-
-const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
+type SortOption = 'name' | 'date' | 'most_downloaded';
 
 function ResourcesSubpage() {
   const navigate = useNavigate();
-  const [selectedSemester, setSelectedSemester] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'most_downloaded' | 'recent'>('recent');
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [department, setDepartment] = useState('');
+  const [semester, setSemester] = useState('');
+  const [subject, setSubject] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [resourceList, setResourceList] = useState<AppResource[]>(() => getResources());
 
-  const fetchResources = async () => {
-    try {
-      setLoading(true);
-      setError('');
+  const user = getStoredCurrentUser();
+  const resources = resourceList;
 
-      const params = new URLSearchParams();
-      if (selectedDepartment) params.set('department', selectedDepartment);
-      if (selectedSemester) params.set('semester', selectedSemester);
-      if (selectedSubject) params.set('subject', selectedSubject);
-      if (search) params.set('search', search);
-      params.set('sortBy', sortBy);
-      params.set('limit', '200');
+  const departments = useMemo(() => Array.from(new Set(resources.map((item) => item.department))).sort(), [resources]);
 
-      const res = await fetch(`${API_BASE}/resources?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load resources');
-      const data = await res.json();
-      setResources(data.resources || []);
-    } catch (err: any) {
-      setError(err?.message || 'Could not load resources');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchResources();
-  }, [selectedDepartment, selectedSemester, selectedSubject, search, sortBy]);
+  const semesters = useMemo(() => {
+    return Array.from(new Set(resources.filter((item) => !department || item.department === department).map((item) => item.semester))).sort();
+  }, [resources, department]);
 
   const subjects = useMemo(() => {
-    const subjectSet = new Set<string>();
-    resources.forEach((resource) => {
-      if (!selectedDepartment || resource.department === selectedDepartment) {
-        if (!selectedSemester || resource.semester === selectedSemester) {
-          subjectSet.add(resource.subject);
-        }
-      }
-    });
-    return Array.from(subjectSet).sort();
-  }, [resources, selectedDepartment, selectedSemester]);
+    return Array.from(
+      new Set(
+        resources
+          .filter((item) => (!department || item.department === department) && (!semester || item.semester === semester))
+          .map((item) => item.subject)
+      )
+    ).sort();
+  }, [resources, department, semester]);
 
-  const grouped = useMemo(() => {
-    const tree: Record<string, Record<string, Record<string, Resource[]>>> = {};
-    resources.forEach((resource) => {
-      if (!tree[resource.department]) tree[resource.department] = {};
-      if (!tree[resource.department][resource.semester]) tree[resource.department][resource.semester] = {};
-      if (!tree[resource.department][resource.semester][resource.subject]) tree[resource.department][resource.semester][resource.subject] = [];
-      tree[resource.department][resource.semester][resource.subject].push(resource);
-    });
-    return tree;
-  }, [resources]);
+  const filteredResources = useMemo(() => {
+    const filtered = resources.filter(
+      (item) =>
+        (!department || item.department === department) &&
+        (!semester || item.semester === semester) &&
+        (!subject || item.subject === subject)
+    );
 
-  const handleDownload = async (resource: Resource) => {
-    try {
-      const accessToken = getAccessToken();
-      if (!accessToken) {
-        alert('Please login to download resources');
-        navigate('/login');
-        return;
-      }
+    const sorted = [...filtered];
+    if (sortBy === 'name') sorted.sort((a, b) => a.title.localeCompare(b.title));
+    if (sortBy === 'most_downloaded') sorted.sort((a, b) => b.downloadCount - a.downloadCount);
+    if (sortBy === 'date') sorted.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+    return sorted;
+  }, [resources, department, semester, subject, sortBy]);
 
-      const res = await authorizedFetch(`${API_BASE}/resources/${resource._id}/download`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      if (!res.ok) throw new Error('Download failed');
+  const handleView = (resource: AppResource) => {
+    incrementDownload(resource.id, user?.email);
+    setResourceList(getResources());
+    window.open(resource.driveLink, '_blank', 'noopener,noreferrer');
+  };
 
-      const data = await res.json();
-      window.open(data.googleDriveUrl || resource.googleDriveUrl, '_blank');
-
-      setResources((prev) =>
-        prev.map((item) => (item._id === resource._id ? { ...item, downloadCount: data.downloadCount } : item))
-      );
-    } catch {
-      window.open(resource.googleDriveUrl, '_blank');
-    }
+  const handleDownload = (resource: AppResource) => {
+    incrementDownload(resource.id, user?.email);
+    setResourceList(getResources());
+    window.open(resource.driveLink, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
         <button
           onClick={() => navigate('/dashboard')}
-          className="mb-6 sm:mb-8 flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+          className="mb-5 inline-flex items-center gap-2 text-slate-700 hover:text-slate-900"
         >
-          <ChevronLeft className="w-5 h-5 mr-2" />
-          Back to Dashboard
+          <ChevronLeft className="w-4 h-4" /> Back to Dashboard
         </button>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Browse Resources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 mb-6">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Resources</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             <select
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={selectedDepartment}
+              value={department}
               onChange={(e) => {
-                setSelectedDepartment(e.target.value);
-                setSelectedSubject('');
+                setDepartment(e.target.value);
+                setSemester('');
+                setSubject('');
               }}
+              className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
             >
-              <option value="">All Departments</option>
-              {Array.from(new Set(resources.map((r) => r.department))).sort().map((dep) => (
-                <option key={dep} value={dep}>{dep}</option>
+              <option value="">Department</option>
+              {departments.map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
 
             <select
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={selectedSemester}
+              value={semester}
               onChange={(e) => {
-                setSelectedSemester(e.target.value);
-                setSelectedSubject('');
+                setSemester(e.target.value);
+                setSubject('');
               }}
+              className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
             >
-              <option value="">All Semesters</option>
-              {Array.from(new Set(resources.map((r) => r.semester))).sort().map((sem) => (
-                <option key={sem} value={sem}>{sem}</option>
+              <option value="">Semester</option>
+              {semesters.map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
 
             <select
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
             >
-              <option value="">All Subjects</option>
-              {subjects.map((subject) => (
-                <option key={subject} value={subject}>{subject}</option>
+              <option value="">Subject</option>
+              {subjects.map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
 
-            <input
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="Search by resource title..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-
             <select
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
             >
-              <option value="recent">Recently Added</option>
-              <option value="most_downloaded">Most Downloaded</option>
-              <option value="name">Name</option>
+              <option value="name">Sort by: Name</option>
+              <option value="date">Sort by: Date</option>
+              <option value="most_downloaded">Sort by: Most Downloaded</option>
             </select>
           </div>
-        </div>
+        </section>
 
-        {loading && <div className="text-center text-gray-600 py-8">Loading resources...</div>}
-        {error && <div className="text-center text-red-600 py-8">{error}</div>}
-        {!loading && !error && resources.length === 0 && (
-          <div className="text-center text-gray-600 py-8 bg-white rounded-xl shadow">No resources found.</div>
+        {filteredResources.length === 0 && (
+          <div className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-8 text-center text-slate-600">
+            No resources found for selected filters.
+          </div>
         )}
 
-        {!loading && !error && Object.keys(grouped).map((department) => (
-          <div key={department} className="mb-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">{department}</h3>
-            {Object.keys(grouped[department]).map((semester) => (
-              <div key={semester} className="mb-6">
-                <h4 className="text-xl font-semibold text-gray-700 mb-3">{semester} Semester</h4>
-                {Object.keys(grouped[department][semester]).map((subject) => (
-                  <div key={subject} className="mb-4">
-                    <h5 className="text-lg font-medium text-gray-700 mb-3">{subject}</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {grouped[department][semester][subject].map((resource) => (
-                        <div key={resource._id} className="bg-white rounded-xl shadow p-5 border border-gray-100">
-                          <h6 className="text-lg font-semibold text-gray-900 mb-2">{resource.title}</h6>
-                          <p className="text-sm text-gray-600 mb-1">Uploaded by: {resource.uploadedByName}</p>
-                          <p className="text-sm text-gray-500 mb-4">Downloads: {resource.downloadCount || 0}</p>
-                          <button
-                            onClick={() => handleDownload(resource)}
-                            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            Download
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {filteredResources.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredResources.map((resource) => (
+              <article key={resource.id} className="rounded-2xl border border-white/30 bg-white/25 backdrop-blur-xl p-5 hover:shadow-lg transition">
+                <h3 className="text-lg font-semibold text-slate-900">{resource.title}</h3>
+                <p className="text-sm text-slate-600 mt-2">Uploader: {resource.uploadedBy}</p>
+                <p className="text-sm text-slate-600">Upload Date: {new Date(resource.uploadedAt).toLocaleDateString()}</p>
+                <p className="text-xs text-slate-500 mt-1">Downloads: {resource.downloadCount}</p>
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => handleDownload(resource)}
+                    className="flex-1 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm inline-flex items-center justify-center gap-2"
+                  >
+                    <Download size={14} /> Download
+                  </button>
+                  <button
+                    onClick={() => handleView(resource)}
+                    className="flex-1 rounded-lg border border-slate-300 text-slate-700 px-3 py-2 text-sm inline-flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink size={14} /> View
+                  </button>
+                </div>
+              </article>
             ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

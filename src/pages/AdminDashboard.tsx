@@ -1,471 +1,288 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Bell, FileText, LogOut, Menu, MessageSquare, Plus, RefreshCw, Search, Settings, Trash2, Upload, Users } from 'lucide-react';
+import {
+  Activity,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Plus,
+  Shield,
+  Trash2,
+  Upload,
+  Users,
+  X
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Feedback from './Feedback';
-import { authorizedFetch, clearStoredAuth, getAccessToken } from '../utils/authSession';
+import { clearStoredAuth, getStoredCurrentUser } from '../utils/authSession';
+import {
+  ADMIN_EMAIL,
+  AppActivity,
+  AppResource,
+  AppUser,
+  addUserByAdmin,
+  createResource,
+  deleteResource,
+  deleteUser,
+  getRecentActivities,
+  getResources,
+  getStats,
+  getUsers,
+  seedResourcesIfEmpty,
+  updateUser,
+  updateUserRole
+} from '../utils/localDb';
 
-type AdminTab = 'dashboard' | 'users' | 'resources' | 'communities' | 'feedback' | 'settings';
+type AdminTab = 'dashboard' | 'users' | 'resources' | 'monitor' | 'communities' | 'feedback' | 'settings';
 
 interface AdminDashboardProps {
   initialTab?: AdminTab;
 }
 
-type AdminUser = {
-  _id: string;
-  userId?: string;
-  name: string;
-  username: string;
-  email: string;
-  loginMethod?: 'google' | 'manual';
-  role: 'super_admin' | 'admin' | 'faculty' | 'student' | 'user';
-  status: 'active' | 'inactive';
-  lastLogin?: string;
-  registrationDate?: string;
-  department?: string;
-};
+const dashboardTabs: { id: AdminTab; label: string; icon: any }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'users', label: 'User Management', icon: Users },
+  { id: 'resources', label: 'Resource Management', icon: Upload },
+  { id: 'monitor', label: 'System Monitor', icon: Activity }
+];
 
-type Resource = {
-  _id: string;
-  department: string;
-  semester: string;
-  subject: string;
-  title: string;
-  googleDriveUrl: string;
-  uploadedByName: string;
-  downloadCount: number;
-};
-
-const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
-
-const isAuthenticatedAdmin = () => {
-  if (localStorage.getItem('lazyNotezAdmin') !== 'true') return false;
-  const raw = localStorage.getItem('currentUser');
-  if (!raw) return false;
-  try {
-    const user = JSON.parse(raw);
-    return user?.role === 'admin' || user?.role === 'super_admin';
-  } catch {
-    return false;
-  }
-};
+function isAdmin(user: any) {
+  return user?.role === 'admin' && user?.email?.toLowerCase() === ADMIN_EMAIL;
+}
 
 export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashboardProps) {
   const navigate = useNavigate();
-  const [isAuthChecked, setIsAuthChecked] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [resources, setResources] = useState<AppResource[]>([]);
+  const [activity, setActivity] = useState<AppActivity[]>([]);
+  const [search, setSearch] = useState('');
+  const [userForm, setUserForm] = useState({ name: '', email: '', role: 'user', provider: 'manual' });
   const [resourceForm, setResourceForm] = useState({
+    title: '',
     department: '',
     semester: '',
     subject: '',
-    title: '',
-    googleDriveUrl: '',
-    uploadedByName: ''
+    driveLink: ''
   });
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ name: '', email: '', role: 'user' });
 
-  const authHeaders = useMemo(() => {
-    const token = getAccessToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }, [isAuthChecked]);
+  const currentAdmin = getStoredCurrentUser();
 
-  const loadUsers = async () => {
-    const res = await authorizedFetch(`${API_BASE}/users`, { headers: authHeaders });
-    if (!res.ok) throw new Error('Unable to load users');
-    const data = await res.json();
-    setUsers(data.users || []);
+  const refreshData = () => {
+    setUsers(getUsers());
+    setResources(getResources());
+    setActivity(getRecentActivities(40));
   };
-
-  const loadResources = async () => {
-    const res = await fetch(`${API_BASE}/resources?limit=200&sortBy=recent`);
-    if (!res.ok) throw new Error('Unable to load resources');
-    const data = await res.json();
-    setResources(data.resources || []);
-  };
-
-  const loadStats = async () => {
-    try {
-      setLoadingStats(true);
-      const res = await authorizedFetch(`${API_BASE}/admin/stats`, { headers: authHeaders });
-      if (!res.ok) throw new Error('Failed to load stats');
-      const data = await res.json();
-      setStats(data);
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
-  useEffect(() => setActiveTab(initialTab), [initialTab]);
 
   useEffect(() => {
-    if (!isAuthenticatedAdmin()) {
-      navigate('/auth', { replace: true });
+    seedResourcesIfEmpty();
+    const currentUser = getStoredCurrentUser();
+    if (!isAdmin(currentUser)) {
+      navigate('/', { replace: true });
       return;
     }
 
-    setIsAuthChecked(true);
-    loadUsers().catch(() => {});
-    loadResources().catch(() => {});
-    loadStats().catch(() => {});
+    refreshData();
   }, [navigate]);
 
+  useEffect(() => {
+    if (['dashboard', 'users', 'resources', 'monitor'].includes(initialTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const stats = useMemo(() => getStats(), [users, resources]);
+
+  const filteredUsers = useMemo(() => {
+    const needle = search.toLowerCase();
+    if (!needle) return users;
+    return users.filter((user) => `${user.name} ${user.email} ${user.provider} ${user.role}`.toLowerCase().includes(needle));
+  }, [search, users]);
+
   const handleLogout = async () => {
-    try {
-      await authorizedFetch(`${API_BASE}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: authHeaders
-      });
-    } catch {}
     clearStoredAuth();
     navigate('/', { replace: true });
   };
 
-  const handleResyncUsers = async () => {
-    await authorizedFetch(`${API_BASE}/admin/resync-users`, {
-      method: 'POST',
-      headers: authHeaders
-    });
-    await Promise.all([loadUsers(), loadStats()]);
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      addUserByAdmin(
+        {
+          name: userForm.name.trim(),
+          email: userForm.email.trim(),
+          role: userForm.role as 'user' | 'admin',
+          provider: userForm.provider as 'manual' | 'google'
+        },
+        currentAdmin?.email
+      );
+      setUserForm({ name: '', email: '', role: 'user', provider: 'manual' });
+      refreshData();
+    } catch (error: any) {
+      alert(error?.message || 'Unable to add user');
+    }
   };
 
-  const handleUserUpdate = async (userId: string, updates: Partial<AdminUser>) => {
-    const res = await authorizedFetch(`${API_BASE}/users/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify(updates)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err?.message || 'Failed to update user');
-      return;
+  const handleDeleteUser = (user: AppUser) => {
+    if (!confirm(`Delete ${user.name}?`)) return;
+    try {
+      deleteUser(user.id, currentAdmin?.email);
+      refreshData();
+    } catch (error: any) {
+      alert(error?.message || 'Unable to delete user');
     }
-    await Promise.all([loadUsers(), loadStats()]);
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Delete this user?')) return;
-    const res = await authorizedFetch(`${API_BASE}/users/${userId}`, {
-      method: 'DELETE',
-      headers: authHeaders
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err?.message || 'Failed to delete user');
-      return;
-    }
-    await Promise.all([loadUsers(), loadStats()]);
-  };
-
-  const handleCreateResource = async () => {
-    if (!resourceForm.department || !resourceForm.semester || !resourceForm.subject || !resourceForm.title || !resourceForm.googleDriveUrl) {
-      alert('Please fill all required resource fields');
-      return;
-    }
-    const current = localStorage.getItem('currentUser');
-    const currentUser = current ? JSON.parse(current) : null;
-    const payload = {
-      ...resourceForm,
-      uploadedByName: resourceForm.uploadedByName || currentUser?.name || 'Admin'
-    };
-    const res = await authorizedFetch(`${API_BASE}/resources`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err?.message || 'Failed to upload resource');
-      return;
-    }
-    setResourceForm({
-      department: '',
-      semester: '',
-      subject: '',
-      title: '',
-      googleDriveUrl: '',
-      uploadedByName: ''
-    });
-    await Promise.all([loadResources(), loadStats()]);
-  };
-
-  const handleDeleteResource = async (resourceId: string) => {
-    if (!confirm('Delete this resource?')) return;
-    const res = await authorizedFetch(`${API_BASE}/resources/${resourceId}`, {
-      method: 'DELETE',
-      headers: authHeaders
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(err?.message || 'Failed to delete resource');
-      return;
-    }
-    await Promise.all([loadResources(), loadStats()]);
-  };
-
-  if (!isAuthChecked) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">Verifying credentials...</div>
-      </div>
+  const handleSaveEdit = () => {
+    if (!editUserId) return;
+    updateUser(
+      editUserId,
+      {
+        name: editDraft.name.trim(),
+        email: editDraft.email.trim(),
+        role: editDraft.role as 'user' | 'admin'
+      },
+      currentAdmin?.email
     );
-  }
-
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'users', label: 'Users Management', icon: Users },
-    { id: 'resources', label: 'Resources', icon: FileText },
-    { id: 'communities', label: 'Communities', icon: MessageSquare },
-    { id: 'feedback', label: 'Feedback', icon: Bell },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
-
-  const filteredUsers = users.filter((u) =>
-    `${u.name} ${u.username} ${u.email}`.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const renderContent = () => {
-    if (activeTab === 'dashboard') {
-      return (
-        <DashboardTab
-          users={users}
-          stats={stats}
-          loading={loadingStats}
-          onRefresh={async () => {
-            await Promise.all([loadStats(), loadUsers(), loadResources()]);
-          }}
-        />
-      );
-    }
-
-    if (activeTab === 'users') {
-      return (
-        <UsersTab
-          users={filteredUsers}
-          onPromote={(id) => handleUserUpdate(id, { role: 'admin' })}
-          onDisable={(id) => handleUserUpdate(id, { status: 'inactive' })}
-          onEnable={(id) => handleUserUpdate(id, { status: 'active' })}
-          onDelete={handleDeleteUser}
-        />
-      );
-    }
-
-    if (activeTab === 'resources') {
-      return (
-        <ResourcesTab
-          form={resourceForm}
-          setForm={setResourceForm}
-          resources={resources}
-          onCreate={handleCreateResource}
-          onDelete={handleDeleteResource}
-        />
-      );
-    }
-
-    if (activeTab === 'feedback') return <Feedback />;
-    if (activeTab === 'communities') return <CommunitiesTab />;
-    return <SettingsTab />;
+    setEditUserId(null);
+    refreshData();
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex">
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-black/40 border-r border-white/10 backdrop-blur-md flex flex-col fixed h-screen z-40`}>
-        <div className="p-6 flex items-center justify-between">
-          {sidebarOpen && <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">Admin Panel</h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-white/10 rounded-lg transition">
-            <Menu size={20} />
-          </button>
-        </div>
+  const handleRoleToggle = (user: AppUser) => {
+    const role = user.role === 'admin' ? 'user' : 'admin';
+    updateUserRole(user.id, role, currentAdmin?.email);
+    refreshData();
+  };
 
-        <nav className="flex-1 space-y-2 px-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id as AdminTab);
-                  navigate(`/admin/${item.id === 'dashboard' ? 'dashboard' : item.id}`, { replace: true });
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                  activeTab === item.id ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg' : 'hover:bg-white/10 text-gray-300'
-                }`}
-              >
-                <Icon size={20} />
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
+  const handleResourceUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resourceForm.title || !resourceForm.department || !resourceForm.semester || !resourceForm.subject || !resourceForm.driveLink) {
+      alert('Please fill all resource fields');
+      return;
+    }
 
-        <div className="p-4 border-t border-white/10">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-500/20 text-red-400 transition font-medium">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+    createResource({
+      title: resourceForm.title,
+      department: resourceForm.department,
+      semester: resourceForm.semester,
+      subject: resourceForm.subject,
+      driveLink: resourceForm.driveLink,
+      uploadedBy: currentAdmin?.name || 'Admin',
+      uploadedByEmail: currentAdmin?.email
+    });
 
-      <div className="flex-1 ml-20 md:ml-64 flex flex-col overflow-hidden">
-        <header className="h-20 bg-black/30 border-b border-white/10 backdrop-blur-md flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
-          <div className="flex items-center gap-4 flex-1 max-w-md">
-            <Search size={20} className="text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 w-full text-sm focus:outline-none focus:border-primary-500 text-white placeholder-gray-500"
-            />
-          </div>
+    setResourceForm({ title: '', department: '', semester: '', subject: '', driveLink: '' });
+    refreshData();
+  };
 
-          <button
-            onClick={handleResyncUsers}
-            title="Resync users from database"
-            className="relative p-2 hover:bg-white/10 rounded-lg transition"
-          >
-            <RefreshCw size={20} />
-          </button>
-        </header>
-
-        <main className="flex-1 overflow-auto p-4 md:p-8">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function DashboardTab({ users, stats, loading, onRefresh }: { users: AdminUser[]; stats: any; loading: boolean; onRefresh: () => void; }) {
-  const fallbackTotalUsers = users.length;
-  const fallbackActiveUsers = users.filter((u) => u.status === 'active').length;
-  const fallbackAdmins = users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length;
-
-  const cards = [
-    { label: 'Total Users', value: stats?.totalUsers ?? fallbackTotalUsers, className: 'from-blue-500/20 to-blue-600/10 border-blue-500/30' },
-    { label: 'Active Users', value: stats?.activeUsers ?? fallbackActiveUsers, className: 'from-green-500/20 to-green-600/10 border-green-500/30' },
-    { label: 'Admin Users', value: stats?.adminCount ?? fallbackAdmins, className: 'from-purple-500/20 to-purple-600/10 border-purple-500/30' },
-    { label: 'Total Downloads', value: stats?.totalDownloads ?? 0, className: 'from-orange-500/20 to-orange-600/10 border-orange-500/30' },
-    { label: 'Resources', value: stats?.totalResources ?? 0, className: 'from-teal-500/20 to-teal-600/10 border-teal-500/30' }
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">Dashboard</h1>
-          <p className="text-gray-400 mt-2">System activity and admin monitoring overview</p>
-        </div>
-        <button onClick={onRefresh} className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition">Refresh</button>
-      </div>
-
-      {loading && <p className="text-gray-400">Loading analytics...</p>}
-
-      <div className="grid md:grid-cols-5 gap-6">
-        {cards.map((card) => (
-          <div key={card.label} className={`p-6 rounded-2xl bg-gradient-to-br border backdrop-blur-sm ${card.className}`}>
-            <p className="text-gray-300 text-sm font-semibold">{card.label}</p>
-            <p className="text-4xl font-bold mt-3">{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-        <h3 className="text-xl font-bold mb-4">Recent Logins</h3>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-300 border-b border-white/10">
-                <th className="py-2">User</th>
-                <th className="py-2">Email</th>
-                <th className="py-2">Method</th>
-                <th className="py-2">Last Login</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(stats?.recentLogins || []).map((entry: any, i: number) => (
-                <tr key={i} className="border-b border-white/5">
-                  <td className="py-2">{entry?.user?.name || entry?.user?.username || 'Unknown'}</td>
-                  <td className="py-2">{entry?.user?.email || 'N/A'}</td>
-                  <td className="py-2 capitalize">{entry?.meta?.loginMethod || 'manual'}</td>
-                  <td className="py-2">{new Date(entry?.createdAt).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function UsersTab({
-  users,
-  onPromote,
-  onDisable,
-  onEnable,
-  onDelete
-}: {
-  users: AdminUser[];
-  onPromote: (id: string) => void;
-  onDisable: (id: string) => void;
-  onEnable: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
+  const renderDashboard = () => (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl font-bold">User Management</h1>
-        <p className="text-gray-400 mt-2">Manage roles, status, and account access.</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard title="Total Users" value={stats.totalUsers} />
+        <StatCard title="Total Resources" value={stats.totalResources} />
+        <StatCard title="Active Users" value={stats.activeUsers} />
+        <StatCard title="Recent Uploads" value={stats.recentUploads} />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-white/10 backdrop-blur-sm bg-white/5">
-        <table className="w-full text-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <ControlCard title="User Management" description="View, add, edit, delete and change user roles" onClick={() => setActiveTab('users')} />
+        <ControlCard title="Resource Management" description="Upload and maintain learning resources" onClick={() => setActiveTab('resources')} />
+        <ControlCard title="System Monitor" description="Track recent user/admin activity" onClick={() => setActiveTab('monitor')} />
+      </div>
+
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+        <h3 className="text-lg font-semibold text-slate-800 mb-3">Activity Feed</h3>
+        <div className="space-y-2">
+          {activity.slice(0, 8).map((item) => (
+            <div key={item.id} className="rounded-xl bg-white/50 px-3 py-2 text-sm text-slate-700 flex justify-between gap-4">
+              <span>{item.message}</span>
+              <span className="text-slate-500 shrink-0">{new Date(item.createdAt).toLocaleString()}</span>
+            </div>
+          ))}
+          {activity.length === 0 && <p className="text-sm text-slate-500">No activity yet.</p>}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderUsers = () => (
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Add New User</h3>
+        <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input
+            value={userForm.name}
+            onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+            placeholder="Name"
+            className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+            required
+          />
+          <input
+            value={userForm.email}
+            onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+            type="email"
+            placeholder="Email"
+            className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+            required
+          />
+          <select value={userForm.provider} onChange={(e) => setUserForm({ ...userForm, provider: e.target.value })} className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2">
+            <option value="manual">Manual</option>
+            <option value="google">Google</option>
+          </select>
+          <select value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })} className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button type="submit" className="rounded-lg bg-slate-900 text-white px-3 py-2 flex items-center justify-center gap-2 hover:bg-slate-800">
+            <Plus size={16} /> Add
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 overflow-x-auto">
+        <div className="flex flex-wrap justify-between gap-3 mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">User Management</h3>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search users"
+            className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm"
+          />
+        </div>
+        <table className="w-full text-sm min-w-[780px]">
           <thead>
-            <tr className="border-b border-white/10 bg-white/5">
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Name</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Email</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Method</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Role</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Last Login</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Status</th>
-              <th className="px-4 py-4 text-left font-bold text-gray-200">Actions</th>
+            <tr className="border-b border-slate-200 text-left text-slate-700">
+              <th className="py-2">Name</th>
+              <th>Email</th>
+              <th>Provider</th>
+              <th>Role</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user._id} className="border-b border-white/5 hover:bg-white/10 transition">
-                <td className="px-4 py-4">
-                  <p className="font-semibold">{user.name}</p>
-                  <p className="text-xs text-gray-400">@{user.username}</p>
-                </td>
-                <td className="px-4 py-4 text-gray-300">{user.email}</td>
-                <td className="px-4 py-4 capitalize">{user.loginMethod || 'manual'}</td>
-                <td className="px-4 py-4 capitalize">{user.role}</td>
-                <td className="px-4 py-4 text-gray-300">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</td>
-                <td className="px-4 py-4 capitalize">{user.status}</td>
-                <td className="px-4 py-4">
-                  <div className="flex gap-2">
-                    {user.role !== 'admin' && user.role !== 'super_admin' && (
-                      <button onClick={() => onPromote(user._id)} className="px-2 py-1 text-xs rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition">
-                        Promote
-                      </button>
-                    )}
-                    {user.status === 'active' ? (
-                      <button onClick={() => onDisable(user._id)} className="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition">
-                        Disable
-                      </button>
-                    ) : (
-                      <button onClick={() => onEnable(user._id)} className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 transition">
-                        Enable
-                      </button>
-                    )}
-                    <button onClick={() => onDelete(user._id)} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 transition flex items-center gap-1">
-                      <Trash2 size={14} /> Delete
+            {filteredUsers.map((user) => (
+              <tr key={user.id} className="border-b border-slate-100 text-slate-700">
+                <td className="py-3">{user.name}</td>
+                <td>{user.email}</td>
+                <td className="capitalize">{user.provider}</td>
+                <td className="capitalize">{user.role}</td>
+                <td>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setEditUserId(user.id);
+                        setEditDraft({ name: user.name, email: user.email, role: user.role });
+                      }}
+                      className="px-2 py-1 rounded bg-blue-100 text-blue-700"
+                    >
+                      Edit
+                    </button>
+                    <button onClick={() => handleDeleteUser(user)} className="px-2 py-1 rounded bg-red-100 text-red-700">
+                      Delete
+                    </button>
+                    <button onClick={() => handleRoleToggle(user)} className="px-2 py-1 rounded bg-amber-100 text-amber-700">
+                      {user.role === 'admin' ? 'Demote' : 'Promote'}
                     </button>
                   </div>
                 </td>
@@ -473,68 +290,73 @@ function UsersTab({
             ))}
           </tbody>
         </table>
-      </div>
+      </section>
+
+      {editUserId && (
+        <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-slate-800">Edit User</h3>
+            <button onClick={() => setEditUserId(null)} className="text-slate-600"><X size={18} /></button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input value={editDraft.name} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" />
+            <input value={editDraft.email} onChange={(e) => setEditDraft({ ...editDraft, email: e.target.value })} className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" />
+            <select value={editDraft.role} onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value })} className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button onClick={handleSaveEdit} className="rounded-lg bg-slate-900 text-white px-3 py-2">Save</button>
+          </div>
+        </section>
+      )}
     </div>
   );
-}
 
-function ResourcesTab({
-  form,
-  setForm,
-  resources,
-  onCreate,
-  onDelete
-}: {
-  form: any;
-  setForm: (next: any) => void;
-  resources: Resource[];
-  onCreate: () => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
+  const renderResources = () => (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-4xl font-bold">Resource Management</h1>
-        <p className="text-gray-400 mt-2">Upload and manage resources by department, semester, and subject.</p>
-      </div>
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">Upload Resource</h3>
+        <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+          <input value={resourceForm.title} onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })} placeholder="Resource Title" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
+          <input value={resourceForm.department} onChange={(e) => setResourceForm({ ...resourceForm, department: e.target.value })} placeholder="Department" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
+          <input value={resourceForm.semester} onChange={(e) => setResourceForm({ ...resourceForm, semester: e.target.value })} placeholder="Semester" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
+          <input value={resourceForm.subject} onChange={(e) => setResourceForm({ ...resourceForm, subject: e.target.value })} placeholder="Subject" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
+          <input value={resourceForm.driveLink} onChange={(e) => setResourceForm({ ...resourceForm, driveLink: e.target.value })} placeholder="Google Drive URL" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
+          <button type="submit" className="xl:col-span-5 rounded-lg bg-slate-900 text-white px-3 py-2 flex items-center justify-center gap-2">
+            <Upload size={16} /> Submit Resource
+          </button>
+        </form>
+      </section>
 
-      <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-        <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Upload size={20} /> Upload Resource</h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Department" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Semester" value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })} />
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Subject" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Resource Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Google Drive URL" value={form.googleDriveUrl} onChange={(e) => setForm({ ...form, googleDriveUrl: e.target.value })} />
-          <input className="bg-white/5 border border-white/10 rounded px-4 py-2" placeholder="Uploaded By" value={form.uploadedByName} onChange={(e) => setForm({ ...form, uploadedByName: e.target.value })} />
-        </div>
-        <button onClick={onCreate} className="mt-4 px-6 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-primary-700 hover:shadow-lg transition font-semibold flex items-center gap-2">
-          <Plus size={18} /> Submit Resource
-        </button>
-      </div>
-
-      <div className="overflow-x-auto rounded-2xl border border-white/10 backdrop-blur-sm bg-white/5">
-        <table className="w-full text-sm">
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
           <thead>
-            <tr className="border-b border-white/10 bg-white/5">
-              <th className="px-4 py-4 text-left">Title</th>
-              <th className="px-4 py-4 text-left">Department</th>
-              <th className="px-4 py-4 text-left">Semester</th>
-              <th className="px-4 py-4 text-left">Subject</th>
-              <th className="px-4 py-4 text-left">Downloads</th>
-              <th className="px-4 py-4 text-left">Actions</th>
+            <tr className="border-b border-slate-200 text-left text-slate-700">
+              <th className="py-2">Title</th>
+              <th>Department</th>
+              <th>Semester</th>
+              <th>Subject</th>
+              <th>Downloads</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {resources.map((resource) => (
-              <tr key={resource._id} className="border-b border-white/5 hover:bg-white/10 transition">
-                <td className="px-4 py-4">{resource.title}</td>
-                <td className="px-4 py-4">{resource.department}</td>
-                <td className="px-4 py-4">{resource.semester}</td>
-                <td className="px-4 py-4">{resource.subject}</td>
-                <td className="px-4 py-4">{resource.downloadCount || 0}</td>
-                <td className="px-4 py-4">
-                  <button onClick={() => onDelete(resource._id)} className="px-3 py-1 text-xs rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 transition flex items-center gap-1">
+              <tr key={resource.id} className="border-b border-slate-100 text-slate-700">
+                <td className="py-3">{resource.title}</td>
+                <td>{resource.department}</td>
+                <td>{resource.semester}</td>
+                <td>{resource.subject}</td>
+                <td>{resource.downloadCount}</td>
+                <td>
+                  <button
+                    onClick={() => {
+                      if (!confirm('Delete this resource?')) return;
+                      deleteResource(resource.id, currentAdmin?.email);
+                      refreshData();
+                    }}
+                    className="px-2 py-1 rounded bg-red-100 text-red-700 inline-flex items-center gap-1"
+                  >
                     <Trash2 size={14} /> Delete
                   </button>
                 </td>
@@ -542,29 +364,113 @@ function ResourcesTab({
             ))}
           </tbody>
         </table>
+      </section>
+    </div>
+  );
+
+  const renderMonitor = () => (
+    <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+      <h3 className="text-lg font-semibold text-slate-800 mb-4">System Monitor</h3>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <MonitorPanel title="Recent User Logins" items={activity.filter((item) => item.type === 'login')} />
+        <MonitorPanel title="Recent Downloads" items={activity.filter((item) => item.type === 'download')} />
+        <MonitorPanel title="New Registered Users" items={activity.filter((item) => item.type === 'register' || item.type === 'user_add')} />
+        <MonitorPanel title="Upload Activity" items={activity.filter((item) => item.type === 'upload')} />
+      </div>
+    </section>
+  );
+
+  const renderContent = () => {
+    if (activeTab === 'users') return renderUsers();
+    if (activeTab === 'resources') return renderResources();
+    if (activeTab === 'monitor') return renderMonitor();
+    return renderDashboard();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
+      <div className="flex">
+        <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900/90 text-white backdrop-blur-xl transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex items-center gap-2 font-semibold">
+              <Shield size={18} /> Lazy Notez Admin
+            </div>
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={18} /></button>
+          </div>
+          <nav className="p-4 space-y-2">
+            {dashboardTabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSidebarOpen(false);
+                    navigate(tab.id === 'dashboard' ? '/admin/dashboard' : `/admin/${tab.id}`, { replace: true });
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition ${activeTab === tab.id ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                >
+                  <Icon size={16} /> {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="p-4 border-t border-white/10 mt-auto">
+            <button onClick={handleLogout} className="w-full px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center gap-2">
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
+        </aside>
+
+        <main className="flex-1 lg:ml-72 p-4 md:p-6">
+          <header className="mb-6 rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-4 flex items-center justify-between">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden rounded-lg border border-slate-300 p-2 text-slate-700">
+              <Menu size={18} />
+            </button>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+              <p className="text-sm text-slate-600">Welcome, {currentAdmin?.name}</p>
+            </div>
+            <button onClick={refreshData} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">Refresh</button>
+          </header>
+
+          {renderContent()}
+        </main>
       </div>
     </div>
   );
 }
 
-function CommunitiesTab() {
+function StatCard({ title, value }: { title: string; value: number }) {
   return (
-    <div className="space-y-6">
-      <h1 className="text-4xl font-bold">Communities Manager</h1>
-      <div className="p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm text-center">
-        <MessageSquare className="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p className="text-gray-400">Community management remains available in existing modules.</p>
-      </div>
+    <div className="rounded-2xl border border-white/30 bg-white/25 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition">
+      <p className="text-sm text-slate-600">{title}</p>
+      <p className="text-3xl font-semibold text-slate-900 mt-2">{value}</p>
     </div>
   );
 }
 
-function SettingsTab() {
+function ControlCard({ title, description, onClick }: { title: string; description: string; onClick: () => void }) {
   return (
-    <div className="space-y-6">
-      <h1 className="text-4xl font-bold">System Settings</h1>
-      <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-        <p className="text-gray-300">Security controls are active: protected admin routes, token-verified APIs, role-based access, and logout hardening.</p>
+    <button onClick={onClick} className="text-left rounded-2xl border border-white/30 bg-white/25 backdrop-blur-xl p-5 hover:scale-[1.01] transition">
+      <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+      <p className="text-sm text-slate-600 mt-2">{description}</p>
+    </button>
+  );
+}
+
+function MonitorPanel({ title, items }: { title: string; items: AppActivity[] }) {
+  return (
+    <div className="rounded-xl border border-white/30 bg-white/45 p-3">
+      <h4 className="text-sm font-semibold text-slate-700 mb-2">{title}</h4>
+      <div className="space-y-2">
+        {items.slice(0, 6).map((item) => (
+          <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 flex flex-wrap justify-between gap-2">
+            <span>{item.message}</span>
+            <span className="text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-xs text-slate-500">No records yet.</p>}
       </div>
     </div>
   );

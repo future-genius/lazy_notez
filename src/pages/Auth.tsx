@@ -83,7 +83,7 @@ export default function Auth({ onLogin }: AuthProps) {
               onLogin={(userData) => {
                 setGoogleError('');
                 onLogin(userData);
-                if (userData?.role === 'admin' || userData?.role === 'super_admin') {
+                if (userData?.role === 'admin') {
                   navigate('/admin', { replace: true });
                   return;
                 }

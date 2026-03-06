@@ -1,11 +1,21 @@
 import { clearStoredAuth, getStoredCurrentUser, setStoredCurrentUser } from './authSession';
+import { upsertGoogleUser } from './localDb';
 
 const GOOGLE_CLIENT_ID =
   (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
   '702960286853-skkvdqed3ajop543nkjih3ubd345ct50.apps.googleusercontent.com';
-const API_BASE = (window as any).__API_BASE__ || (import.meta as any).env?.VITE_API_BASE || 'http://localhost:4000/api';
 const NETLIFY_GOOGLE_AUTH_ENDPOINT = '/.netlify/functions/google-auth';
 let googleScriptPromise: Promise<void> | null = null;
+
+function decodeJwtPayload(token: string) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
 
 function ensureGoogleScriptLoaded() {
   if ((window as any).google?.accounts?.id) return Promise.resolve();
@@ -57,31 +67,52 @@ export async function handleGoogleCredentialResponse(
     const token = response?.credential;
     if (!token) throw new Error('Google token missing');
 
-    const postBody = JSON.stringify({ token });
-    let res = await fetch(NETLIFY_GOOGLE_AUTH_ENDPOINT, {
+    let googleUser = null;
+    const res = await fetch(NETLIFY_GOOGLE_AUTH_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: postBody
+      body: JSON.stringify({ token })
     });
 
-    if (!res.ok) {
-      // Development fallback if Netlify function is unavailable.
-      res = await fetch(`${API_BASE}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: postBody
-      });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      googleUser = data?.user;
     }
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.message || 'Google sign-in failed');
+    if (!googleUser) {
+      const payload = decodeJwtPayload(token);
+      if (!payload?.email) {
+        throw new Error('Google sign-in failed. Please try again.');
+      }
+      googleUser = {
+        id: payload.sub,
+        email: payload.email,
+        name: payload.name || payload.email,
+        username: payload.email?.split('@')?.[0],
+        picture: payload.picture
+      };
     }
 
-    const data = await res.json().catch(() => ({}));
-    const currentUser = { ...data.user, ...(data.accessToken ? { accessToken: data.accessToken } : {}) };
-    const stored = storeUser(currentUser);
+    const synced = upsertGoogleUser({
+      id: googleUser.id || googleUser.user_id,
+      email: googleUser.email,
+      name: googleUser.name || googleUser.username || googleUser.email,
+      username: googleUser.username,
+      picture: googleUser.picture
+    });
+
+    const stored = storeUser({
+      id: synced.id,
+      name: synced.name,
+      email: synced.email,
+      role: synced.role,
+      provider: 'google',
+      createdAt: synced.createdAt,
+      username: synced.username,
+      avatar: synced.avatar,
+      lastLoginAt: synced.lastLoginAt
+    });
+
     onSuccess(stored);
   } catch (error) {
     console.error('Google login failed', error);
