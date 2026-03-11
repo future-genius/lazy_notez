@@ -101,19 +101,20 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen">
-      {isLoggedIn && !location.pathname.startsWith('/admin') && (
-        <GlobalNav userName={user?.name} isAdmin={isAdmin(user)} onLogout={handleLogout} />
-      )}
+      <div className="min-h-screen">
+        {isLoggedIn && !location.pathname.startsWith('/admin') && (
+        <GlobalNav />
+        )}
 
+      <div className={isLoggedIn && !location.pathname.startsWith('/admin') ? 'lg:ml-72' : ''}>
       <Routes>
         <Route path="/" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
         <Route path="/auth" element={!isLoggedIn ? <Auth onLogin={handleLogin} /> : <Navigate to={isAdmin(user) ? '/admin' : '/dashboard'} replace />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/register" element={!isLoggedIn ? <Register onRegister={handleLogin} /> : <Navigate to="/dashboard" replace />} />
         <Route path="/home" element={<Home isLoggedIn={isLoggedIn} onLogin={handleLogin} user={user} onLogout={handleLogout} />} />
-        <Route path="/dashboard" element={<ProtectedRoute isAllowed={isLoggedIn}><Dashboard user={user as any} /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute isAllowed={isLoggedIn}><Dashboard user={user as any} /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute isAllowed={isLoggedIn}><Dashboard user={user as any} onLogout={handleLogout} /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute isAllowed={isLoggedIn}><Dashboard user={user as any} onLogout={handleLogout} /></ProtectedRoute>} />
         <Route path="/resources" element={<ProtectedRoute isAllowed={isLoggedIn}><ResourcesSubpage /></ProtectedRoute>} />
         <Route path="/community" element={<ProtectedRoute isAllowed={isLoggedIn}><Community /></ProtectedRoute>} />
         <Route path="/about" element={<AboutUs />} />
@@ -129,6 +130,7 @@ function App() {
         <Route path="/admin/*" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to={isLoggedIn ? '/dashboard' : '/'} replace />} />
       </Routes>
+      </div>
     </div>
   );
 }

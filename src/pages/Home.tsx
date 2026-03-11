@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
-import Sidebar from '../components/Sidebar';
+import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
 import FAB from '../components/ui/FAB';
-import { useSidebarSwipe } from '../hooks/useSidebarSwipe';
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
@@ -37,32 +35,13 @@ interface HomeProps {
 }
 
 export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-  useSidebarSwipe({
-    isOpen: isSidebarOpen,
-    onOpen: () => setIsSidebarOpen(true),
-    onClose: () => setIsSidebarOpen(false),
-    enabled: isLoggedIn
-  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 flex flex-col">
-      {/* Show sidebar only when logged in */}
-      {isLoggedIn && <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} onNavigate={(p) => navigate(p)} />}
-
       {/* Top Bar */}
-      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14' : 'top-0'} z-40 border-b border-gray-100`}>
-        {/* Show menu button only when logged in */}
-        {isLoggedIn && (
-          <button onClick={toggleSidebar} className="p-2 focus:outline-none bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition active:scale-95">
-            <Menu className="w-5 sm:w-6 h-5 sm:h-6 text-gray-800" />
-          </button>
-        )}
-        {!isLoggedIn && <div className="w-8 sm:w-10" />}
+      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14 lg:top-0' : 'top-0'} z-40 border-b border-gray-100`}>
+        <div className="w-8 sm:w-10" />
 
         <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Lazy Notez</h1>
 
