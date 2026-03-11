@@ -1,3 +1,5 @@
+import { publishActivity } from './activityBus';
+
 export type AuthProvider = 'google' | 'manual';
 export type UserRole = 'user' | 'admin';
 
@@ -38,6 +40,9 @@ export type AppActivity = {
   actorEmail?: string;
   targetId?: string;
   createdAt: string;
+  meta?: {
+    source?: AuthProvider;
+  };
 };
 
 const USERS_KEY = 'lazyNotez.db.users.v1';
@@ -93,19 +98,20 @@ export function saveActivities(activities: AppActivity[]) {
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities.slice(0, 500)));
 }
 
-export function logActivity(type: ActivityType, message: string, actorEmail?: string, targetId?: string) {
-  const next = [
-    {
+export function logActivity(type: ActivityType, message: string, actorEmail?: string, targetId?: string, meta?: AppActivity['meta']) {
+  const created: AppActivity = {
       id: createId('activity'),
       type,
       message,
       actorEmail,
       targetId,
-      createdAt: nowIso()
-    },
-    ...getActivities()
-  ];
+      createdAt: nowIso(),
+      meta
+    };
+
+  const next = [created, ...getActivities()];
   saveActivities(next);
+  publishActivity(created);
 }
 
 export function findUserByEmail(email: string) {
@@ -146,7 +152,7 @@ export function upsertUser(partial: Partial<AppUser> & { email: string; name: st
     users[existingIndex] = nextUser;
   } else {
     users.push(nextUser);
-    logActivity('register', `New user registered: ${nextUser.name}`, nextUser.email, nextUser.id);
+    logActivity('register', `New user registered: ${nextUser.name}`, nextUser.email, nextUser.id, { source: nextUser.provider });
   }
   saveUsers(users);
   return nextUser;
@@ -196,7 +202,7 @@ export function loginManualUser(identifier: string, password: string) {
     lastLoginAt: nowIso(),
     provider: 'manual'
   });
-  logActivity('login', `${updated.name} logged in`, updated.email, updated.id);
+  logActivity('login', `${updated.name} logged in`, updated.email, updated.id, { source: 'manual' });
   return updated;
 }
 
@@ -210,7 +216,7 @@ export function upsertGoogleUser(input: { id?: string; email: string; name: stri
     avatar: input.picture,
     lastLoginAt: nowIso()
   });
-  logActivity('login', `${updated.name} logged in with Google`, updated.email, updated.id);
+  logActivity('login', `${updated.name} logged in with Google`, updated.email, updated.id, { source: 'google' });
   return updated;
 }
 

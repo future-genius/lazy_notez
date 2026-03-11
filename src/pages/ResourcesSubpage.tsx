@@ -3,11 +3,13 @@ import { ChevronLeft, Download, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getStoredCurrentUser } from '../utils/authSession';
 import { AppResource, getResources, incrementDownload } from '../utils/localDb';
+import SearchBar from '../components/ui/SearchBar';
 
 type SortOption = 'name' | 'date' | 'most_downloaded';
 
 function ResourcesSubpage() {
   const navigate = useNavigate();
+  const [query, setQuery] = useState('');
   const [department, setDepartment] = useState('');
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('');
@@ -38,7 +40,9 @@ function ResourcesSubpage() {
       (item) =>
         (!department || item.department === department) &&
         (!semester || item.semester === semester) &&
-        (!subject || item.subject === subject)
+        (!subject || item.subject === subject) &&
+        (!query ||
+          `${item.title} ${item.department} ${item.semester} ${item.subject}`.toLowerCase().includes(query.toLowerCase().trim()))
     );
 
     const sorted = [...filtered];
@@ -72,7 +76,10 @@ function ResourcesSubpage() {
 
         <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 mb-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-4">Resources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="md:col-span-2 xl:col-span-2">
+              <SearchBar value={query} onChange={setQuery} placeholder="Search by title, subject, department..." />
+            </div>
             <select
               value={department}
               onChange={(e) => {

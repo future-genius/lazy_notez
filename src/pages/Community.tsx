@@ -1,13 +1,26 @@
-import React from 'react';
-import CommunityCard from '../components/ui/CommunityCard';
-import Sidebar from '../components/Sidebar';
-import FAB from '../components/ui/FAB';
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
+import CommunityCard from '../components/ui/CommunityCard';
+import FAB from '../components/ui/FAB';
+import { useSidebarSwipe } from '../hooks/useSidebarSwipe';
 
 export default function Community() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia?.('(min-width: 1024px)')?.matches) {
+      setSidebarOpen(true);
+    }
+  }, []);
+
+  useSidebarSwipe({
+    isOpen: sidebarOpen,
+    onOpen: () => setSidebarOpen(true),
+    onClose: () => setSidebarOpen(false)
+  });
 
   const sampleGroups = [
     {
@@ -28,16 +41,29 @@ export default function Community() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-surface-default">
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} onNavigate={(path) => navigate(path)} />
 
-      <main className="flex-1 p-6 lg:p-10 ml-0 lg:ml-72 fade-in">
-        <div className="container">
-          <header className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Community</h1>
-            <p className="text-gray-600 mt-1">Official WhatsApp groups and community channels — join to collaborate.</p>
-          </header>
+      <main className={`flex-1 fade-in ${sidebarOpen ? 'lg:ml-72' : ''}`}>
+        <header className="sticky top-0 z-30 border-b border-white/40 bg-white/30 backdrop-blur-xl">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen((prev) => !prev)}
+                className="lg:hidden rounded-lg border border-slate-300 p-2 text-slate-700"
+                aria-label="Toggle sidebar"
+              >
+                {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+              </button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Community</h1>
+                <p className="text-sm text-slate-600">Official groups and channels — join to collaborate.</p>
+              </div>
+            </div>
+          </div>
+        </header>
 
+        <div className="container py-6">
           <section>
             <div className="grid-responsive">
               {sampleGroups.map((g) => (
@@ -60,3 +86,4 @@ export default function Community() {
     </div>
   );
 }
+

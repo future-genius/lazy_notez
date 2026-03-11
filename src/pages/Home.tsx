@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, GraduationCap, Users, Bookmark, Brain, Rocket, ChevronRight, Menu, User, LogOut, Zap, Target, Award, Code, Instagram, Linkedin, Mail, MapPin } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import FAB from '../components/ui/FAB';
+import { useSidebarSwipe } from '../hooks/useSidebarSwipe';
 
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
@@ -41,8 +42,15 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
+  useSidebarSwipe({
+    isOpen: isSidebarOpen,
+    onOpen: () => setIsSidebarOpen(true),
+    onClose: () => setIsSidebarOpen(false),
+    enabled: isLoggedIn
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 via-white to-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 flex flex-col">
       {/* Show sidebar only when logged in */}
       {isLoggedIn && <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} onNavigate={(p) => navigate(p)} />}
 

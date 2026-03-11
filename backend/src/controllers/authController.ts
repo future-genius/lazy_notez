@@ -64,21 +64,29 @@ const issueAuthTokens = async (user: any, res: Response) => {
   return accessToken;
 };
 
-const emitRealtimeLogin = (user: any) => {
+type AuthRealtimeEventType = 'login' | 'register';
+
+const emitRealtimeAuthEvent = (user: any, eventType: AuthRealtimeEventType) => {
   try {
     const io = getIO();
     if (io) {
-      io.emit('user.login', {
+      const payload = {
+        type: eventType,
         userId: user.userId,
         username: user.username,
         name: user.name,
         email: user.email,
-        loginMethod: user.loginMethod,
+        source: user.loginMethod || 'manual',
         timestamp: new Date()
-      });
+      };
+
+      io.emit('user.activity', payload);
+      if (eventType === 'login') {
+        io.emit('user.login', payload);
+      }
     }
   } catch (err) {
-    console.warn('Failed to emit user.login event', err);
+    console.warn('Failed to emit realtime auth event', err);
   }
 };
 
@@ -153,7 +161,7 @@ export const register = async (req: Request, res: Response) => {
     await user.save();
 
     await ActivityLog.create({ user: user._id, action: 'register.manual', ip: req.ip, meta: { loginMethod: 'manual' } });
-    emitRealtimeLogin(user);
+    emitRealtimeAuthEvent(user, 'register');
 
     const accessToken = await issueAuthTokens(user, res);
     res.status(201).json({ accessToken, user: buildUserResponse(user) });
@@ -183,7 +191,7 @@ export const login = async (req: Request, res: Response) => {
     await user.save();
 
     await ActivityLog.create({ user: user._id, action: 'login.manual', ip: req.ip, meta: { loginMethod: 'manual' } });
-    emitRealtimeLogin(user);
+    emitRealtimeAuthEvent(user, 'login');
 
     const accessToken = await issueAuthTokens(user, res);
     res.json({ accessToken, user: buildUserResponse(user) });
@@ -214,7 +222,8 @@ export const googleLogin = async (req: Request, res: Response) => {
     const name = sanitizeHtml(payload.name || payload.email.split('@')[0]);
     let user = await User.findOne({ email });
 
-    if (!user) {
+    const createdNow = !user;
+    if (createdNow) {
       const username = await generateUniqueUsername(payload.email.split('@')[0]);
       const generatedPassword = await bcrypt.hash(crypto.randomUUID(), 12);
       const role = email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'user';
@@ -242,7 +251,10 @@ export const googleLogin = async (req: Request, res: Response) => {
     }
 
     await ActivityLog.create({ user: user._id, action: 'login.google', ip: req.ip, meta: { loginMethod: 'google' } });
-    emitRealtimeLogin(user);
+    if (createdNow) {
+      emitRealtimeAuthEvent(user, 'register');
+    }
+    emitRealtimeAuthEvent(user, 'login');
 
     const accessToken = await issueAuthTokens(user, res);
     res.json({ accessToken, user: buildUserResponse(user) });

@@ -12,6 +12,8 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { useToast } from '../components/ui/ToastProvider';
 import { clearStoredAuth, getStoredCurrentUser } from '../utils/authSession';
 import {
   ADMIN_EMAIL,
@@ -30,6 +32,7 @@ import {
   updateUser,
   updateUserRole
 } from '../utils/localDb';
+import { subscribeActivities } from '../utils/activityBus';
 
 type AdminTab = 'dashboard' | 'users' | 'resources' | 'monitor' | 'communities' | 'feedback' | 'settings';
 
@@ -50,6 +53,7 @@ function isAdmin(user: any) {
 
 export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashboardProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -87,6 +91,66 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   }, [navigate]);
 
   useEffect(() => {
+    return subscribeActivities((next) => {
+      if (next.type === 'login') {
+        toast({
+          title: 'User login detected',
+          description: `${next.actorEmail || 'Unknown user'} • ${next.meta?.source === 'google' ? 'Google' : 'Manual'}`,
+          variant: 'info'
+        });
+      }
+      if (next.type === 'register') {
+        toast({
+          title: 'New registration',
+          description: `${next.actorEmail || 'Unknown user'} • ${next.meta?.source === 'google' ? 'Google' : 'Manual'}`,
+          variant: 'success'
+        });
+      }
+
+      setActivity((prev) => [next, ...prev].slice(0, 40));
+    });
+  }, [toast]);
+
+  useEffect(() => {
+    const socketUrl =
+      (window as any).__SOCKET_URL__ ||
+      (import.meta as any).env?.VITE_SOCKET_URL ||
+      '';
+
+    if (!socketUrl) return;
+
+    const socket = io(socketUrl, { withCredentials: true, transports: ['websocket', 'polling'] });
+
+    socket.on('user.activity', (payload: any) => {
+      const type = payload?.type === 'register' ? 'register' : 'login';
+      const source = payload?.source === 'google' ? 'google' : 'manual';
+      const email = payload?.email || payload?.username || 'Unknown user';
+      const name = payload?.name || email;
+
+      const next: AppActivity = {
+        id: `realtime_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        type,
+        actorEmail: email,
+        message: type === 'register' ? `${name} registered` : `${name} logged in`,
+        createdAt: new Date(payload?.timestamp || Date.now()).toISOString(),
+        meta: { source }
+      };
+
+      toast({
+        title: type === 'register' ? 'New registration' : 'User login detected',
+        description: `${email} • ${source === 'google' ? 'Google' : 'Manual'}`,
+        variant: type === 'register' ? 'success' : 'info'
+      });
+
+      setActivity((prev) => [next, ...prev].slice(0, 40));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [toast]);
+
+  useEffect(() => {
     if (['dashboard', 'users', 'resources', 'monitor'].includes(initialTab)) {
       setActiveTab(initialTab);
     }
@@ -120,7 +184,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       setUserForm({ name: '', email: '', role: 'user', provider: 'manual' });
       refreshData();
     } catch (error: any) {
-      alert(error?.message || 'Unable to add user');
+      toast({ title: 'Unable to add user', description: error?.message || 'Please try again.', variant: 'error' });
     }
   };
 
@@ -130,7 +194,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       deleteUser(user.id, currentAdmin?.email);
       refreshData();
     } catch (error: any) {
-      alert(error?.message || 'Unable to delete user');
+      toast({ title: 'Unable to delete user', description: error?.message || 'Please try again.', variant: 'error' });
     }
   };
 
@@ -158,7 +222,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const handleResourceUpload = (e: React.FormEvent) => {
     e.preventDefault();
     if (!resourceForm.title || !resourceForm.department || !resourceForm.semester || !resourceForm.subject || !resourceForm.driveLink) {
-      alert('Please fill all resource fields');
+      toast({ title: 'Missing fields', description: 'Please fill all resource fields.', variant: 'warning' });
       return;
     }
 
@@ -406,7 +470,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
                   onClick={() => {
                     setActiveTab(tab.id);
                     setSidebarOpen(false);
-                    navigate(tab.id === 'dashboard' ? '/admin/dashboard' : `/admin/${tab.id}`, { replace: true });
+                    navigate(tab.id === 'dashboard' ? '/admin/dashboard' : `/admin/${tab.id}`);
                   }}
                   className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition ${activeTab === tab.id ? 'bg-white/20' : 'hover:bg-white/10'}`}
                 >
@@ -466,7 +530,14 @@ function MonitorPanel({ title, items }: { title: string; items: AppActivity[] })
       <div className="space-y-2">
         {items.slice(0, 6).map((item) => (
           <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 flex flex-wrap justify-between gap-2">
-            <span>{item.message}</span>
+            <span className="flex flex-wrap items-center gap-2">
+              <span>{item.message}</span>
+              {item.meta?.source && (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                  {item.meta.source === 'google' ? 'Google' : 'Manual'}
+                </span>
+              )}
+            </span>
             <span className="text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
           </div>
         ))}

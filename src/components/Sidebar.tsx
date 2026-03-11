@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Brain, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Brain, ChevronDown, ChevronRight, X } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 type NavItemProps = {
@@ -62,50 +62,63 @@ function Sidebar({ isOpen, toggleSidebar, onNavigate }: SidebarProps) {
   const location = useLocation();
   const activePath = location.pathname;
 
+  const navigateAndClose = (path: string) => {
+    onNavigate(path);
+    if (window.matchMedia?.('(max-width: 1023px)')?.matches) {
+      toggleSidebar();
+    }
+  };
+
   return (
-    <div className={`flex flex-col bg-white items-center justify-start h-screen fixed left-0 top-0 transition-all duration-300 z-50 shadow-lg ${isOpen ? 'w-64 sm:w-72' : 'w-0'} overflow-hidden`}>
-      {isOpen && (
-        <div className="flex flex-col mt-2 z-[100] items-center justify-start h-full w-full overflow-y-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between w-full pr-4 sm:pr-8 pl-3 sm:pl-4 py-3 sm:py-4 border-b border-gray-100">
-            <div className="flex text-lg sm:text-xl text-gray-800 font-bold items-center w-full">
-              <Brain className="w-10 sm:w-14 h-10 sm:h-14 mr-2 text-primary-600" />
-              <span className="hidden sm:inline">Lazy Notez</span>
+    <>
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] transition-opacity ${isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+        onClick={toggleSidebar}
+        aria-hidden="true"
+      />
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        aria-hidden={!isOpen}
+      >
+        <div className="flex flex-col h-full w-full overflow-y-auto">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+            <div className="flex text-lg text-gray-900 font-bold items-center">
+              <Brain className="w-10 h-10 mr-2 text-primary-600" />
+              <span>Lazy Notez</span>
             </div>
+            <button onClick={toggleSidebar} className="rounded-lg p-2 hover:bg-gray-100 lg:hidden" aria-label="Close sidebar">
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
           </div>
 
-          {/* Navigation Items */}
-          <div className="flex items-center flex-col gap-3 w-full">
-            <NavItem title="Home" onClick={() => onNavigate('/home')} active={activePath === '/home'} />
+          <div className="flex items-center flex-col gap-2 w-full py-2">
+            <NavItem title="Home" onClick={() => navigateAndClose('/home')} active={activePath === '/home' || activePath === '/'} />
 
-            {/* Resources Section */}
-            <div className="w-full px-6 py-2">
+            <div className="w-full px-3 sm:px-6 py-1 sm:py-2">
               <div
-                className={`w-full flex items-center justify-between cursor-pointer rounded-lg px-3 py-2 transition-colors ${
-                  resourcesOpen ? 'bg-surface-muted' : 'hover:bg-surface-muted'
-                }`}
+                className={`w-full flex items-center justify-between cursor-pointer rounded-lg px-3 py-2.5 transition-colors ${resourcesOpen ? 'bg-surface-muted' : 'hover:bg-surface-muted'}`}
                 onClick={() => setResourcesOpen(!resourcesOpen)}
+                role="button"
               >
-                <p className="text-md max-sm:text-base font-medium">Resources</p>
+                <p className="text-sm sm:text-md font-medium">Resources</p>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transform transition-transform ${resourcesOpen ? 'rotate-180' : ''}`} />
               </div>
               {resourcesOpen && (
-                <div className="flex flex-col items-start pl-4 justify-center w-full gap-2 mt-2">
-                  <NavLink onClick={() => onNavigate('/resources')}>Resources</NavLink>
+                <div className="flex flex-col items-start pl-4 pr-2 justify-center w-full gap-2 mt-2">
+                  <NavLink onClick={() => navigateAndClose('/resources')}>Resources</NavLink>
                 </div>
               )}
               <hr className="border-gray-100 w-full mt-2" />
             </div>
 
-            <NavItem title="Community" onClick={() => onNavigate('/community')} active={activePath === '/community'} />
-
-            <NavItem title="Dashboard" onClick={() => onNavigate('/dashboard')} active={activePath === '/dashboard'} />
-
-            <NavItem title="About Us" isLast onClick={() => onNavigate('/about')} active={activePath === '/about'} />
+            <NavItem title="Community" onClick={() => navigateAndClose('/community')} active={activePath === '/community'} />
+            <NavItem title="Dashboard" onClick={() => navigateAndClose('/dashboard')} active={activePath === '/dashboard'} />
+            <NavItem title="About Us" isLast onClick={() => navigateAndClose('/about')} active={activePath === '/about'} />
           </div>
         </div>
-      )}
-    </div>
+      </aside>
+    </>
   );
 }
 

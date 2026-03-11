@@ -65,7 +65,13 @@ function Dashboard({ user, onLogout }: DashboardProps) {
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 text-white flex items-center justify-center font-semibold">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            <button onClick={onLogout} className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm inline-flex items-center gap-2">
+            <button
+              onClick={async () => {
+                await onLogout();
+                navigate('/', { replace: true });
+              }}
+              className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm inline-flex items-center gap-2"
+            >
               <LogOut size={14} /> Logout
             </button>
           </div>

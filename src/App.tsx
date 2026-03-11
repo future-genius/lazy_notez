@@ -94,9 +94,10 @@ function App() {
       <Route path="/admin/dashboard" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="dashboard" /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="users" /></ProtectedRoute>} />
       <Route path="/admin/resources" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="resources" /></ProtectedRoute>} />
-      <Route path="/admin/communities" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
-      <Route path="/admin/feedback" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
-      <Route path="/admin/settings" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
+      <Route path="/admin/monitor" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><AdminDashboard initialTab="monitor" /></ProtectedRoute>} />
+      <Route path="/admin/communities" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/monitor" replace /></ProtectedRoute>} />
+      <Route path="/admin/feedback" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/monitor" replace /></ProtectedRoute>} />
+      <Route path="/admin/settings" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/monitor" replace /></ProtectedRoute>} />
       <Route path="/admin/*" element={<ProtectedRoute isAllowed={isAdmin(user)} redirectTo="/"><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to={isLoggedIn ? '/dashboard' : '/'} replace />} />
     </Routes>
