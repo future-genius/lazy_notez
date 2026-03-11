@@ -55,7 +55,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
       {isLoggedIn && <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} onNavigate={(p) => navigate(p)} />}
 
       {/* Top Bar */}
-      <div className="flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
+      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14' : 'top-0'} z-40 border-b border-gray-100`}>
         {/* Show menu button only when logged in */}
         {isLoggedIn && (
           <button onClick={toggleSidebar} className="p-2 focus:outline-none bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition active:scale-95">

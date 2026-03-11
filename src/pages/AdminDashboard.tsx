@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   LayoutDashboard,
@@ -47,6 +47,72 @@ const dashboardTabs: { id: AdminTab; label: string; icon: any }[] = [
   { id: 'monitor', label: 'System Monitor', icon: Activity }
 ];
 
+const DEPARTMENTS: { code: string; label: string }[] = [
+  { code: 'CSE', label: 'Computer Science and Engineering' },
+  { code: 'ECE', label: 'Electronics and Communication Engineering' },
+  { code: 'IT', label: 'Information Technology' },
+  { code: 'AIDS', label: 'Artificial Intelligence and Data Science' },
+  { code: 'MECH', label: 'Mechanical Engineering' },
+  { code: 'CIVIL', label: 'Civil Engineering' },
+  { code: 'EEE', label: 'Electrical and Electronics Engineering' },
+  { code: 'EIE', label: 'Electronics and Instrumentation Engineering' },
+  { code: 'AGRI', label: 'Agricultural Engineering' },
+  { code: 'CYBERSECURITY', label: 'Cyber Security' },
+  { code: 'MDE', label: 'Mechatronics and Design Engineering' }
+];
+
+const SEMESTERS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'] as const;
+
+const COMMON_SUBJECTS: Record<(typeof SEMESTERS)[number], string[]> = {
+  I: ['Engineering Mathematics I', 'Engineering Physics', 'Engineering Chemistry', 'Programming Fundamentals', 'Basic Electrical Engineering', 'Engineering Graphics'],
+  II: ['Engineering Mathematics II', 'Physics for Computing', 'Environmental Science', 'Data Structures Basics', 'Digital Fundamentals', 'Professional Communication'],
+  III: ['Engineering Mathematics III', 'Data Structures', 'Object Oriented Programming', 'Computer Organization', 'Discrete Mathematics'],
+  IV: ['Probability & Statistics', 'Database Management Systems', 'Operating Systems', 'Computer Networks', 'Design and Analysis of Algorithms'],
+  V: ['Software Engineering', 'Web Technologies', 'Machine Learning', 'Professional Elective I'],
+  VI: ['Cloud Computing', 'Distributed Systems', 'Compiler Design', 'Information Security', 'Professional Elective II'],
+  VII: ['Mobile Application Development', 'Big Data Analytics', 'Cyber Security', 'Professional Elective III', 'Project Work I'],
+  VIII: ['Project Work II', 'Internship / Seminar', 'Professional Elective IV']
+};
+
+const DEPARTMENT_SUBJECTS: Record<string, Partial<typeof COMMON_SUBJECTS>> = {
+  CSE: {
+    III: ['Data Structures', 'Discrete Mathematics', 'Digital Logic Design', 'Object Oriented Programming (Java)'],
+    IV: ['Database Management Systems', 'Operating Systems', 'Computer Networks', 'Design and Analysis of Algorithms'],
+    V: ['Software Engineering', 'Web Technologies', 'Machine Learning', 'Computer Graphics'],
+    VI: ['Cloud Computing', 'Compiler Design', 'Distributed Systems', 'Information Security'],
+    VII: ['Mobile Application Development', 'Big Data Analytics', 'Cyber Security', 'DevOps']
+  },
+  ECE: {
+    III: ['Signals and Systems', 'Analog Circuits', 'Digital Electronics', 'Network Analysis'],
+    IV: ['Communication Systems', 'Microprocessors', 'Electromagnetic Fields', 'Linear Integrated Circuits'],
+    V: ['Digital Signal Processing', 'VLSI Design', 'Control Systems', 'Embedded Systems'],
+    VI: ['Wireless Communication', 'Antenna and Wave Propagation', 'Digital Communication', 'IoT Systems'],
+    VII: ['RF Engineering', 'Optical Communication', 'Satellite Communication', 'Project Work I']
+  },
+  IT: {
+    III: ['Data Structures', 'Discrete Mathematics', 'Object Oriented Programming', 'Computer Organization'],
+    IV: ['Database Management Systems', 'Operating Systems', 'Computer Networks', 'Algorithms'],
+    V: ['Web Technologies', 'Software Engineering', 'Data Mining', 'Professional Elective I'],
+    VI: ['Cloud Computing', 'Information Security', 'Distributed Systems', 'Professional Elective II'],
+    VII: ['Mobile Application Development', 'Big Data Analytics', 'Project Work I', 'Professional Elective III']
+  },
+  AIDS: {
+    III: ['Data Structures', 'Linear Algebra', 'Python for Data Science', 'Probability Basics'],
+    IV: ['Machine Learning', 'Database Management Systems', 'Statistics for AI', 'Data Visualization'],
+    V: ['Deep Learning', 'Natural Language Processing', 'Data Mining', 'Professional Elective I'],
+    VI: ['Computer Vision', 'Big Data Analytics', 'Cloud Computing', 'Professional Elective II'],
+    VII: ['MLOps', 'AI Ethics', 'Project Work I', 'Professional Elective III']
+  }
+};
+
+function getSubjectOptions(departmentCode: string, semester: string) {
+  const sem = semester as (typeof SEMESTERS)[number];
+  if (!sem) return [];
+  const dept = DEPARTMENT_SUBJECTS[departmentCode]?.[sem];
+  const base = COMMON_SUBJECTS[sem] || [];
+  return Array.from(new Set([...(dept || []), ...base]));
+}
+
 function isAdmin(user: any) {
   return user?.role === 'admin' && user?.email?.toLowerCase() === ADMIN_EMAIL;
 }
@@ -63,7 +129,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'user', provider: 'manual' });
   const [resourceForm, setResourceForm] = useState({
     title: '',
-    department: '',
+    departmentCode: '',
     semester: '',
     subject: '',
     driveLink: ''
@@ -221,14 +287,16 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   const handleResourceUpload = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resourceForm.title || !resourceForm.department || !resourceForm.semester || !resourceForm.subject || !resourceForm.driveLink) {
+    if (!resourceForm.title || !resourceForm.departmentCode || !resourceForm.semester || !resourceForm.subject || !resourceForm.driveLink) {
       toast({ title: 'Missing fields', description: 'Please fill all resource fields.', variant: 'warning' });
       return;
     }
 
+    const departmentLabel = DEPARTMENTS.find((d) => d.code === resourceForm.departmentCode)?.label || resourceForm.departmentCode;
+
     createResource({
       title: resourceForm.title,
-      department: resourceForm.department,
+      department: departmentLabel,
       semester: resourceForm.semester,
       subject: resourceForm.subject,
       driveLink: resourceForm.driveLink,
@@ -236,7 +304,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       uploadedByEmail: currentAdmin?.email
     });
 
-    setResourceForm({ title: '', department: '', semester: '', subject: '', driveLink: '' });
+    setResourceForm({ title: '', departmentCode: '', semester: '', subject: '', driveLink: '' });
     refreshData();
   };
 
@@ -380,13 +448,82 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">Upload Resource</h3>
-        <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
-          <input value={resourceForm.title} onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })} placeholder="Resource Title" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
-          <input value={resourceForm.department} onChange={(e) => setResourceForm({ ...resourceForm, department: e.target.value })} placeholder="Department" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
-          <input value={resourceForm.semester} onChange={(e) => setResourceForm({ ...resourceForm, semester: e.target.value })} placeholder="Semester" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
-          <input value={resourceForm.subject} onChange={(e) => setResourceForm({ ...resourceForm, subject: e.target.value })} placeholder="Subject" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
-          <input value={resourceForm.driveLink} onChange={(e) => setResourceForm({ ...resourceForm, driveLink: e.target.value })} placeholder="Google Drive URL" className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2" required />
-          <button type="submit" className="xl:col-span-5 rounded-lg bg-slate-900 text-white px-3 py-2 flex items-center justify-center gap-2">
+        <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+          <div className="md:col-span-2 xl:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Resource Title</label>
+            <input
+              value={resourceForm.title}
+              onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
+              placeholder="e.g., Data Structures Unit 1 Notes"
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
+            <select
+              value={resourceForm.departmentCode}
+              onChange={(e) => setResourceForm({ ...resourceForm, departmentCode: e.target.value, subject: '' })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            >
+              <option value="">Select</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d.code} value={d.code}>
+                  {d.code} — {d.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Semester</label>
+            <select
+              value={resourceForm.semester}
+              onChange={(e) => setResourceForm({ ...resourceForm, semester: e.target.value, subject: '' })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            >
+              <option value="">Select</option>
+              {SEMESTERS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2 xl:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Subject</label>
+            <select
+              value={resourceForm.subject}
+              onChange={(e) => setResourceForm({ ...resourceForm, subject: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+              disabled={!resourceForm.departmentCode || !resourceForm.semester}
+            >
+              <option value="">{resourceForm.departmentCode && resourceForm.semester ? 'Select' : 'Select department & semester'}</option>
+              {getSubjectOptions(resourceForm.departmentCode, resourceForm.semester).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2 xl:col-span-4">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Google Drive Link</label>
+            <input
+              value={resourceForm.driveLink}
+              onChange={(e) => setResourceForm({ ...resourceForm, driveLink: e.target.value })}
+              placeholder="https://drive.google.com/..."
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            />
+          </div>
+
+          <button type="submit" className="md:col-span-2 xl:col-span-2 rounded-lg bg-slate-900 text-white px-3 py-2 flex items-center justify-center gap-2">
             <Upload size={16} /> Submit Resource
           </button>
         </form>

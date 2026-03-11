@@ -1,20 +1,23 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronLeft, Download, ExternalLink } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Download, ExternalLink } from 'lucide-react';
 import { getStoredCurrentUser } from '../utils/authSession';
-import { AppResource, getResources, incrementDownload } from '../utils/localDb';
+import { AppResource, getResources, incrementDownload, seedResourcesIfEmpty } from '../utils/localDb';
 import SearchBar from '../components/ui/SearchBar';
 
 type SortOption = 'name' | 'date' | 'most_downloaded';
 
 function ResourcesSubpage() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [department, setDepartment] = useState('');
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [resourceList, setResourceList] = useState<AppResource[]>(() => getResources());
+
+  useEffect(() => {
+    seedResourcesIfEmpty();
+    setResourceList(getResources());
+  }, []);
 
   const user = getStoredCurrentUser();
   const resources = resourceList;
@@ -67,13 +70,6 @@ function ResourcesSubpage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="mb-5 inline-flex items-center gap-2 text-slate-700 hover:text-slate-900"
-        >
-          <ChevronLeft className="w-4 h-4" /> Back to Dashboard
-        </button>
-
         <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 mb-6">
           <h2 className="text-2xl font-bold text-slate-900 mb-4">Resources</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">

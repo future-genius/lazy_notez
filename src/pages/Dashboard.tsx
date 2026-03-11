@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Bell, BookOpen, Download, LogOut, Menu, Megaphone, UploadCloud, X } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Bell, BookOpen, Download, Megaphone, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getMyDownloadCount, getRecentActivities, getResources } from '../utils/localDb';
 
@@ -13,7 +13,6 @@ interface User {
 
 interface DashboardProps {
   user: User;
-  onLogout: () => void;
 }
 
 const announcements = [
@@ -22,9 +21,8 @@ const announcements = [
   'Use department and semester filters for faster navigation.'
 ];
 
-function Dashboard({ user, onLogout }: DashboardProps) {
+function Dashboard({ user }: DashboardProps) {
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (!user) {
     return (
@@ -50,43 +48,12 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
-      <header className="sticky top-0 z-30 border-b border-white/40 bg-white/30 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setMobileMenuOpen((prev) => !prev)} className="md:hidden rounded-lg border border-slate-300 p-2 text-slate-700">
-              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">Lazy Notez Dashboard</h1>
-              <p className="text-sm text-slate-600">Welcome back, {user?.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-indigo-600 text-white flex items-center justify-center font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </div>
-            <button
-              onClick={async () => {
-                await onLogout();
-                navigate('/', { replace: true });
-              }}
-              className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm inline-flex items-center gap-2"
-            >
-              <LogOut size={14} /> Logout
-            </button>
-          </div>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/30 px-4 py-3 flex gap-2 flex-wrap">
-            <button onClick={() => navigate('/resources')} className="rounded-lg bg-slate-900 text-white px-3 py-2 text-sm">Resources</button>
-            <button onClick={() => navigate('/community')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Community</button>
-            <button onClick={() => navigate('/home')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Home</button>
-          </div>
-        )}
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <header className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-600 mt-1">Welcome back, {user?.name}</p>
+        </header>
+
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard title="My Downloads" value={metrics.myDownloads} icon={<Download size={18} />} gradient="from-blue-500 to-cyan-500" />
           <MetricCard title="Available Resources" value={metrics.availableResources} icon={<BookOpen size={18} />} gradient="from-indigo-500 to-violet-500" />

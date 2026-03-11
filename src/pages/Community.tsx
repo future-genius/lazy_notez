@@ -45,7 +45,7 @@ export default function Community() {
       <Sidebar isOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} onNavigate={(path) => navigate(path)} />
 
       <main className={`flex-1 fade-in ${sidebarOpen ? 'lg:ml-72' : ''}`}>
-        <header className="sticky top-0 z-30 border-b border-white/40 bg-white/30 backdrop-blur-xl">
+        <header className="sticky top-14 z-30 border-b border-white/40 bg-white/30 backdrop-blur-xl">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -86,4 +86,3 @@ export default function Community() {
     </div>
   );
 }
-
