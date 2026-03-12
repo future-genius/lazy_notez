@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IResource extends Document {
+  category?: 'notes' | 'question_paper' | 'study_material';
   department: string;
   semester: string;
   subject: string;
@@ -16,6 +17,7 @@ export interface IResource extends Document {
 }
 
 const ResourceSchema: Schema = new Schema<IResource>({
+  category: { type: String, enum: ['notes', 'question_paper', 'study_material'], default: 'study_material', index: true },
   department: { type: String, required: true, trim: true, index: true },
   semester: { type: String, required: true, trim: true, index: true },
   subject: { type: String, required: true, trim: true, index: true },

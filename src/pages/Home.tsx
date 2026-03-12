@@ -40,37 +40,22 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 flex flex-col">
       {/* Top Bar */}
-      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14 lg:top-16' : 'top-0'} z-40 border-b border-gray-100`}>
-        <div className="w-8 sm:w-10" />
+      {!isLoggedIn && (
+        <div className="flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
+          <div className="w-8 sm:w-10" />
 
-        <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Lazy Notez</h1>
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Lazy Notez</h1>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {!isLoggedIn ? (
-            <>
-              <button onClick={() => navigate('/auth')} className="px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95">
-                Sign In
-              </button>
-              <button onClick={() => navigate('/auth')} className="hidden sm:inline px-5 py-2 rounded-lg border-2 border-primary-600 text-primary-600 hover:bg-primary-50 transition font-semibold text-sm">
-                Register
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="hidden sm:inline text-xs sm:text-sm text-gray-700 font-semibold">Hello, {user?.name || user?.username}</span>
-              <div className="w-9 sm:w-10 h-9 sm:h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm">
-                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
-              <button onClick={() => navigate('/dashboard')} className="hidden sm:inline px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition font-semibold text-sm">
-                Dashboard
-              </button>
-              <button onClick={onLogout} className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition font-semibold text-xs sm:text-sm active:scale-95">
-                Logout
-              </button>
-            </>
-          )}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => navigate('/auth')} className="px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg active:scale-95">
+              Sign In
+            </button>
+            <button onClick={() => navigate('/auth')} className="hidden sm:inline px-5 py-2 rounded-lg border-2 border-primary-600 text-primary-600 hover:bg-primary-50 transition font-semibold text-sm">
+              Register
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">

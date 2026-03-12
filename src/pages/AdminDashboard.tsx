@@ -32,6 +32,15 @@ import {
   setAnnouncementPublished,
   updateAnnouncement
 } from '../utils/announcements';
+import {
+  createAdminAnnouncement,
+  deleteAdminAnnouncement,
+  fetchAdminAnnouncements,
+  setAdminAnnouncementPublished,
+  updateAdminAnnouncement
+} from '../utils/announcementsApi';
+import { getApiBase } from '../utils/apiBase';
+import { createAdminResource, deleteAdminResource, fetchResources } from '../utils/resourcesApi';
 
 type AdminTab = 'dashboard' | 'users' | 'resources' | 'announcements' | 'monitor' | 'communities' | 'feedback' | 'settings';
 
@@ -140,11 +149,30 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const [editDraft, setEditDraft] = useState({ name: '', email: '', role: 'user' });
 
   const currentAdmin = getStoredCurrentUser();
+  const apiBase = getApiBase();
 
-  const refreshData = () => {
+  const refreshData = async () => {
     setUsers(getUsers());
-    setResources(getResources());
-    setAnnouncements(getAnnouncements());
+    if (apiBase) {
+      try {
+        const remoteResources = await fetchResources({ limit: 500 });
+        setResources(remoteResources);
+      } catch {
+        setResources(getResources());
+      }
+    } else {
+      setResources(getResources());
+    }
+    if (apiBase) {
+      try {
+        const remote = await fetchAdminAnnouncements();
+        setAnnouncements(remote);
+      } catch {
+        setAnnouncements(getAnnouncements());
+      }
+    } else {
+      setAnnouncements(getAnnouncements());
+    }
     setActivity(getRecentActivities(40));
   };
 
@@ -293,19 +321,39 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
     const departmentLabel = DEPARTMENTS.find((d) => d.code === resourceForm.departmentCode)?.label || resourceForm.departmentCode;
 
-    createResource({
-      title: resourceForm.title,
-      category: resourceForm.category as any,
-      department: departmentLabel,
-      semester: resourceForm.semester,
-      subject: resourceForm.subject,
-      driveLink: resourceForm.driveLink,
-      uploadedBy: currentAdmin?.name || 'Admin',
-      uploadedByEmail: currentAdmin?.email
-    });
+    (async () => {
+      try {
+        if (apiBase) {
+          await createAdminResource({
+            title: resourceForm.title,
+            category: resourceForm.category as any,
+            department: departmentLabel,
+            semester: resourceForm.semester,
+            subject: resourceForm.subject,
+            googleDriveUrl: resourceForm.driveLink,
+            uploadedByName: currentAdmin?.name || 'Admin'
+          });
+          toast({ title: 'Resource uploaded', description: 'Synced to server.', variant: 'success' });
+        } else {
+          createResource({
+            title: resourceForm.title,
+            category: resourceForm.category as any,
+            department: departmentLabel,
+            semester: resourceForm.semester,
+            subject: resourceForm.subject,
+            driveLink: resourceForm.driveLink,
+            uploadedBy: currentAdmin?.name || 'Admin',
+            uploadedByEmail: currentAdmin?.email
+          });
+          toast({ title: 'Resource uploaded', description: 'Saved locally.', variant: 'success' });
+        }
 
-    setResourceForm({ title: '', category: 'study_material', departmentCode: '', semester: '', subject: '', driveLink: '' });
-    refreshData();
+        setResourceForm({ title: '', category: 'study_material', departmentCode: '', semester: '', subject: '', driveLink: '' });
+        refreshData();
+      } catch (error: any) {
+        toast({ title: 'Upload failed', description: error?.message || 'Please try again.', variant: 'error' });
+      }
+    })();
   };
 
   const resetAnnouncementForm = () =>
@@ -320,38 +368,69 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
   const handleAnnouncementSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!announcementForm.title.trim() || !announcementForm.description.trim()) {
-      toast({ title: 'Missing fields', description: 'Please fill title and description.', variant: 'warning' });
-      return;
-    }
+    (async () => {
+      if (!announcementForm.title.trim() || !announcementForm.description.trim()) {
+        toast({ title: 'Missing fields', description: 'Please fill title and description.', variant: 'warning' });
+        return;
+      }
 
-    const dateIso = new Date(`${announcementForm.date}T12:00:00`).toISOString();
+      const dateIso = new Date(`${announcementForm.date}T12:00:00`).toISOString();
 
-    if (editAnnouncementId) {
-      const updated = updateAnnouncement(editAnnouncementId, {
-        title: announcementForm.title,
-        description: announcementForm.description,
-        date: dateIso,
-        department: announcementForm.department || undefined,
-        priority: announcementForm.priority,
-        published: announcementForm.published
-      });
-      if (updated) toast({ title: 'Announcement updated', description: updated.title, variant: 'success' });
-      setEditAnnouncementId(null);
-    } else {
-      const created = createAnnouncement({
-        title: announcementForm.title,
-        description: announcementForm.description,
-        date: dateIso,
-        department: announcementForm.department || undefined,
-        priority: announcementForm.priority,
-        published: announcementForm.published
-      });
-      toast({ title: 'Announcement created', description: created.title, variant: 'success' });
-    }
+      try {
+        if (apiBase) {
+          if (editAnnouncementId) {
+            const updated = await updateAdminAnnouncement(editAnnouncementId, {
+              title: announcementForm.title,
+              description: announcementForm.description,
+              date: dateIso,
+              department: announcementForm.department || undefined,
+              priority: announcementForm.priority,
+              published: announcementForm.published
+            });
+            toast({ title: 'Announcement updated', description: updated.title, variant: 'success' });
+            setEditAnnouncementId(null);
+          } else {
+            const created = await createAdminAnnouncement({
+              title: announcementForm.title,
+              description: announcementForm.description,
+              date: dateIso,
+              department: announcementForm.department || undefined,
+              priority: announcementForm.priority,
+              published: announcementForm.published
+            });
+            toast({ title: 'Announcement created', description: created.title, variant: 'success' });
+          }
+        } else {
+          if (editAnnouncementId) {
+            const updated = updateAnnouncement(editAnnouncementId, {
+              title: announcementForm.title,
+              description: announcementForm.description,
+              date: dateIso,
+              department: announcementForm.department || undefined,
+              priority: announcementForm.priority,
+              published: announcementForm.published
+            });
+            if (updated) toast({ title: 'Announcement updated', description: updated.title, variant: 'success' });
+            setEditAnnouncementId(null);
+          } else {
+            const created = createAnnouncement({
+              title: announcementForm.title,
+              description: announcementForm.description,
+              date: dateIso,
+              department: announcementForm.department || undefined,
+              priority: announcementForm.priority,
+              published: announcementForm.published
+            });
+            toast({ title: 'Announcement created', description: created.title, variant: 'success' });
+          }
+        }
 
-    resetAnnouncementForm();
-    refreshData();
+        resetAnnouncementForm();
+        refreshData();
+      } catch (error: any) {
+        toast({ title: 'Announcement failed', description: error?.message || 'Please try again.', variant: 'error' });
+      }
+    })();
   };
 
   const startEditAnnouncement = (item: AppAnnouncement) => {
@@ -628,9 +707,19 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
                 <td>
                   <button
                     onClick={() => {
-                      if (!confirm('Delete this resource?')) return;
-                      deleteResource(resource.id, currentAdmin?.email);
-                      refreshData();
+                      (async () => {
+                        if (!confirm('Delete this resource?')) return;
+                        try {
+                          if (apiBase) {
+                            await deleteAdminResource(resource.id);
+                          } else {
+                            deleteResource(resource.id, currentAdmin?.email);
+                          }
+                          refreshData();
+                        } catch (error: any) {
+                          toast({ title: 'Delete failed', description: error?.message || 'Please try again.', variant: 'error' });
+                        }
+                      })();
                     }}
                     className="px-2 py-1 rounded bg-red-100 text-red-700 inline-flex items-center gap-1"
                   >
@@ -789,8 +878,18 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
                     </button>
                     <button
                       onClick={() => {
-                        setAnnouncementPublished(item.id, !item.published);
-                        refreshData();
+                        (async () => {
+                          try {
+                            if (apiBase) {
+                              await setAdminAnnouncementPublished(item.id, !item.published);
+                            } else {
+                              setAnnouncementPublished(item.id, !item.published);
+                            }
+                            refreshData();
+                          } catch (error: any) {
+                            toast({ title: 'Update failed', description: error?.message || 'Please try again.', variant: 'error' });
+                          }
+                        })();
                       }}
                       className="px-2 py-1 rounded bg-indigo-100 text-indigo-800"
                     >
@@ -798,12 +897,22 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
                     </button>
                     <button
                       onClick={() => {
-                        if (!confirm('Delete this announcement?')) return;
-                        deleteLocalAnnouncement(item.id);
-                        if (editAnnouncementId === item.id) {
-                          setEditAnnouncementId(null);
-                        }
-                        refreshData();
+                        (async () => {
+                          if (!confirm('Delete this announcement?')) return;
+                          try {
+                            if (apiBase) {
+                              await deleteAdminAnnouncement(item.id);
+                            } else {
+                              deleteLocalAnnouncement(item.id);
+                            }
+                            if (editAnnouncementId === item.id) {
+                              setEditAnnouncementId(null);
+                            }
+                            refreshData();
+                          } catch (error: any) {
+                            toast({ title: 'Delete failed', description: error?.message || 'Please try again.', variant: 'error' });
+                          }
+                        })();
                       }}
                       className="px-2 py-1 rounded bg-red-100 text-red-700 inline-flex items-center gap-1"
                     >

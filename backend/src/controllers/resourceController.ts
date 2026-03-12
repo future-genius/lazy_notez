@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import sanitizeHtml from 'sanitize-html';
 import Resource from '../models/Resource';
 import ActivityLog from '../models/ActivityLog';
+import { getIO } from '../utils/socket';
 
 const buildSort = (sortBy?: string) => {
   switch (sortBy) {
@@ -18,6 +19,9 @@ const buildSort = (sortBy?: string) => {
 export const createResource = async (req: Request, res: Response) => {
   try {
     const title = sanitizeHtml(req.body.title);
+    const category = req.body.category === 'notes' || req.body.category === 'question_paper' || req.body.category === 'study_material'
+      ? req.body.category
+      : 'study_material';
     const description = sanitizeHtml(req.body.description || '');
     const tags = req.body.tags?.map((t: string) => sanitizeHtml(t)) || [];
     const department = sanitizeHtml(req.body.department);
@@ -29,6 +33,7 @@ export const createResource = async (req: Request, res: Response) => {
 
     const resource = new Resource({
       title,
+      category,
       description,
       tags,
       department,
@@ -48,6 +53,7 @@ export const createResource = async (req: Request, res: Response) => {
       meta: { resourceId: resource._id, title: resource.title }
     });
 
+    getIO()?.emit('resources.updated', { action: 'create', id: resource._id?.toString() });
     res.status(201).json(resource);
   } catch (err) {
     res.status(500).json({ message: 'Failed to create resource' });
@@ -63,11 +69,13 @@ export const listResources = async (req: Request, res: Response) => {
     const subject = (req.query.subject as string) || '';
     const search = (req.query.search as string) || '';
     const sortBy = (req.query.sortBy as string) || 'recent';
+    const category = (req.query.category as string) || '';
 
     const query: any = {};
     if (department) query.department = department;
     if (semester) query.semester = semester;
     if (subject) query.subject = subject;
+    if (category && ['notes', 'question_paper', 'study_material'].includes(category)) query.category = category;
     if (search) query.title = { $regex: search, $options: 'i' };
 
     const resources = await Resource.find(query)
@@ -94,6 +102,9 @@ export const updateResource = async (req: Request, res: Response) => {
     if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Forbidden' });
 
     if (req.body.title) resource.title = sanitizeHtml(req.body.title);
+    if (req.body.category && ['notes', 'question_paper', 'study_material'].includes(req.body.category)) {
+      (resource as any).category = req.body.category;
+    }
     if (req.body.description !== undefined) resource.description = sanitizeHtml(req.body.description || '');
     if (req.body.department) resource.department = sanitizeHtml(req.body.department);
     if (req.body.semester) resource.semester = sanitizeHtml(req.body.semester);
@@ -103,6 +114,7 @@ export const updateResource = async (req: Request, res: Response) => {
     if (req.body.tags) resource.tags = req.body.tags.map((t: string) => sanitizeHtml(t));
 
     await resource.save();
+    getIO()?.emit('resources.updated', { action: 'update', id: resource._id?.toString() });
     res.json(resource);
   } catch (err) {
     res.status(500).json({ message: 'Failed to update resource' });
@@ -127,6 +139,7 @@ export const deleteResource = async (req: Request, res: Response) => {
       meta: { resourceId: req.params.id, title: resource.title }
     });
 
+    getIO()?.emit('resources.updated', { action: 'delete', id: req.params.id });
     res.json({ message: 'Resource deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete resource' });

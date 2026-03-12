@@ -39,10 +39,17 @@ function Dashboard({ user }: DashboardProps) {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DashboardCard
             icon={<BookOpen size={18} />}
-            title="Notes"
+            title="Study Notes"
             description="Access study notes shared by students."
             actionLabel="Open Notes"
             onClick={() => navigate('/resources?category=notes')}
+          />
+          <DashboardCard
+            icon={<Layers3 size={18} />}
+            title="Resources"
+            description="Important academic resources for your semester and department."
+            actionLabel="Explore"
+            onClick={() => navigate('/resources')}
           />
           <DashboardCard
             icon={<FileText size={18} />}
@@ -50,13 +57,6 @@ function Dashboard({ user }: DashboardProps) {
             description="Previous university exam papers."
             actionLabel="View Papers"
             onClick={() => navigate('/resources?category=question_paper')}
-          />
-          <DashboardCard
-            icon={<Layers3 size={18} />}
-            title="Study Materials"
-            description="Important academic resources."
-            actionLabel="Explore"
-            onClick={() => navigate('/resources?category=study_material')}
           />
           <DashboardCard
             icon={<Megaphone size={18} />}

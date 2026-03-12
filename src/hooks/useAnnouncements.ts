@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import { AppAnnouncement, getPublishedAnnouncements, seedAnnouncementsIfEmpty } from '../utils/announcements';
 import { fetchPublishedAnnouncements } from '../utils/announcementsApi';
+import { getApiBase, getSocketUrl } from '../utils/apiBase';
 
 export function useAnnouncements(limit?: number) {
   const [items, setItems] = useState<AppAnnouncement[]>([]);
@@ -9,18 +11,23 @@ export function useAnnouncements(limit?: number) {
 
   useEffect(() => {
     let cancelled = false;
+    const socketUrl = getSocketUrl();
+    const pollMs = 20000;
+    let pollTimer: any = null;
+    let socket: any = null;
 
-    const load = async () => {
+    const load = async (reason?: string) => {
       setLoading(true);
-      seedAnnouncementsIfEmpty();
+      const apiBase = getApiBase();
+      if (!apiBase) seedAnnouncementsIfEmpty();
 
       try {
         const apiItems = await fetchPublishedAnnouncements();
-        if (!cancelled && apiItems.length > 0) {
+        if (!cancelled) {
           setItems(limit ? apiItems.slice(0, limit) : apiItems);
           setSource('api');
-          return;
         }
+        return;
       } catch {
         // fall back to local
       } finally {
@@ -34,7 +41,14 @@ export function useAnnouncements(limit?: number) {
       }
     };
 
-    load();
+    load('init');
+
+    if (socketUrl) {
+      socket = io(socketUrl, { withCredentials: true, transports: ['websocket', 'polling'] });
+      socket.on('announcements.updated', () => load('socket'));
+    } else {
+      pollTimer = setInterval(() => load('poll'), pollMs);
+    }
 
     const onStorage = (e: StorageEvent) => {
       if (e.key && e.key.startsWith('lazyNotez.db.announcements')) {
@@ -48,9 +62,10 @@ export function useAnnouncements(limit?: number) {
     return () => {
       cancelled = true;
       window.removeEventListener('storage', onStorage);
+      if (pollTimer) clearInterval(pollTimer);
+      if (socket) socket.disconnect();
     };
   }, [limit]);
 
   return { items, source, loading };
 }
-

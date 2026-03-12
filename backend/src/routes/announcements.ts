@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyAccessToken, requireAdminAccess } from '../middleware/authMiddleware';
+import { requireAdminPanel } from '../middleware/adminPanelAuth';
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.get('/', listPublicAnnouncements);
 
-router.use(verifyAccessToken, requireAdminAccess);
+router.use(requireAdminPanel);
 router.get('/admin', listAdminAnnouncements);
 router.post('/', validateCreateAnnouncement, handleValidationErrors, createAnnouncement);
 router.put('/:id', updateAnnouncement);
@@ -22,4 +22,3 @@ router.patch('/:id/publish', publishAnnouncement);
 router.delete('/:id', deleteAnnouncement);
 
 export default router;
-

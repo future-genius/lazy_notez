@@ -36,6 +36,7 @@ export const validateUpdateUser = [
 
 export const validateCreateResource = [
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title required'),
+  body('category').optional().isIn(['notes', 'question_paper', 'study_material']).withMessage('Invalid category'),
   body('department').trim().notEmpty().withMessage('Department required'),
   body('semester').trim().notEmpty().withMessage('Semester required'),
   body('subject').trim().notEmpty().withMessage('Subject required'),

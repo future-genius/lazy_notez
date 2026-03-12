@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import sanitizeHtml from 'sanitize-html';
 import Announcement from '../models/Announcement';
 import ActivityLog from '../models/ActivityLog';
+import { getIO } from '../utils/socket';
 
 const buildQuery = (req: Request, opts: { includeDrafts: boolean }) => {
   const department = (req.query.department as string) || '';
@@ -90,6 +91,7 @@ export const createAnnouncement = async (req: Request, res: Response) => {
       meta: { announcementId: announcement._id, title: announcement.title }
     });
 
+    getIO()?.emit('announcements.updated', { action: 'create', id: announcement._id?.toString() });
     res.status(201).json(announcement);
   } catch {
     res.status(500).json({ message: 'Failed to create announcement' });
@@ -127,6 +129,7 @@ export const updateAnnouncement = async (req: Request, res: Response) => {
       meta: { announcementId: announcement._id, title: announcement.title }
     });
 
+    getIO()?.emit('announcements.updated', { action: 'update', id: announcement._id?.toString() });
     res.json(announcement);
   } catch {
     res.status(500).json({ message: 'Failed to update announcement' });
@@ -149,6 +152,7 @@ export const publishAnnouncement = async (req: Request, res: Response) => {
       meta: { announcementId: announcement._id, title: announcement.title }
     });
 
+    getIO()?.emit('announcements.updated', { action: 'publish', id: announcement._id?.toString(), published: announcement.published });
     res.json(announcement);
   } catch {
     res.status(500).json({ message: 'Failed to update publish status' });
@@ -169,9 +173,9 @@ export const deleteAnnouncement = async (req: Request, res: Response) => {
       meta: { announcementId: req.params.id, title: announcement.title }
     });
 
+    getIO()?.emit('announcements.updated', { action: 'delete', id: req.params.id });
     res.json({ message: 'Announcement deleted' });
   } catch {
     res.status(500).json({ message: 'Failed to delete announcement' });
   }
 };
-

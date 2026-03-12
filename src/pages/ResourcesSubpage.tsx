@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Download, ExternalLink } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { getStoredCurrentUser } from '../utils/authSession';
-import { AppResource, getResources, incrementDownload, seedResourcesIfEmpty } from '../utils/localDb';
+import { AppResource, incrementDownload } from '../utils/localDb';
+import { useResources } from '../hooks/useResources';
+import { trackDownload } from '../utils/resourcesApi';
 import SearchBar from '../components/ui/SearchBar';
 
 type SortOption = 'name' | 'date' | 'most_downloaded';
@@ -22,12 +24,7 @@ function ResourcesSubpage() {
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const [resourceList, setResourceList] = useState<AppResource[]>(() => getResources());
-
-  useEffect(() => {
-    seedResourcesIfEmpty();
-    setResourceList(getResources());
-  }, []);
+  const { items: resourceList, source } = useResources();
 
   useEffect(() => {
     const fromUrl = (searchParams.get('category') as CategoryOption) || '';
@@ -72,14 +69,20 @@ function ResourcesSubpage() {
   }, [resources, department, semester, subject, sortBy]);
 
   const handleView = (resource: AppResource) => {
-    incrementDownload(resource.id, user?.email);
-    setResourceList(getResources());
+    if (source === 'api') {
+      trackDownload(resource.id).catch(() => undefined);
+    } else {
+      incrementDownload(resource.id, user?.email);
+    }
     window.open(resource.driveLink, '_blank', 'noopener,noreferrer');
   };
 
   const handleDownload = (resource: AppResource) => {
-    incrementDownload(resource.id, user?.email);
-    setResourceList(getResources());
+    if (source === 'api') {
+      trackDownload(resource.id).catch(() => undefined);
+    } else {
+      incrementDownload(resource.id, user?.email);
+    }
     window.open(resource.driveLink, '_blank', 'noopener,noreferrer');
   };
 
