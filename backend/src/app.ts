@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import noteRoutes from './routes/notes';
 import resourceRoutes from './routes/resources';
+import announcementRoutes from './routes/announcements';
 import adminRoutes from './routes/admin';
 import User from './models/User';
 import { errorHandler } from './middleware/errorHandler';
@@ -87,6 +88,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/resources', resourceRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/', (_req, res) => res.json({ ok: true, message: 'LazyNotez API v1.0', env: process.env.NODE_ENV }));

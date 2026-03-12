@@ -1,20 +1,10 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Activity,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Plus,
-  Shield,
-  Trash2,
-  Upload,
-  Users,
-  X
-} from 'lucide-react';
+import { Activity, Plus, Trash2, Upload, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import AdminShell from '../components/admin/AdminShell';
 import { useToast } from '../components/ui/ToastProvider';
-import { clearStoredAuth, getStoredCurrentUser } from '../utils/authSession';
+import { getStoredCurrentUser } from '../utils/authSession';
 import {
   ADMIN_EMAIL,
   AppActivity,
@@ -33,19 +23,21 @@ import {
   updateUserRole
 } from '../utils/localDb';
 import { subscribeActivities } from '../utils/activityBus';
+import {
+  AppAnnouncement,
+  createAnnouncement,
+  deleteAnnouncement as deleteLocalAnnouncement,
+  getAnnouncements,
+  seedAnnouncementsIfEmpty,
+  setAnnouncementPublished,
+  updateAnnouncement
+} from '../utils/announcements';
 
-type AdminTab = 'dashboard' | 'users' | 'resources' | 'monitor' | 'communities' | 'feedback' | 'settings';
+type AdminTab = 'dashboard' | 'users' | 'resources' | 'announcements' | 'monitor' | 'communities' | 'feedback' | 'settings';
 
 interface AdminDashboardProps {
   initialTab?: AdminTab;
 }
-
-const dashboardTabs: { id: AdminTab; label: string; icon: any }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'users', label: 'User Management', icon: Users },
-  { id: 'resources', label: 'Resource Management', icon: Upload },
-  { id: 'monitor', label: 'System Monitor', icon: Activity }
-];
 
 const DEPARTMENTS: { code: string; label: string }[] = [
   { code: 'CSE', label: 'Computer Science and Engineering' },
@@ -121,19 +113,29 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [resources, setResources] = useState<AppResource[]>([]);
+  const [announcements, setAnnouncements] = useState<AppAnnouncement[]>([]);
   const [activity, setActivity] = useState<AppActivity[]>([]);
   const [search, setSearch] = useState('');
   const [userForm, setUserForm] = useState({ name: '', email: '', role: 'user', provider: 'manual' });
   const [resourceForm, setResourceForm] = useState({
     title: '',
+    category: 'study_material',
     departmentCode: '',
     semester: '',
     subject: '',
     driveLink: ''
   });
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: '',
+    description: '',
+    date: new Date().toISOString().slice(0, 10),
+    department: '',
+    priority: 'normal' as 'normal' | 'important',
+    published: true
+  });
+  const [editAnnouncementId, setEditAnnouncementId] = useState<string | null>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: '', email: '', role: 'user' });
 
@@ -142,14 +144,16 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const refreshData = () => {
     setUsers(getUsers());
     setResources(getResources());
+    setAnnouncements(getAnnouncements());
     setActivity(getRecentActivities(40));
   };
 
   useEffect(() => {
     seedResourcesIfEmpty();
+    seedAnnouncementsIfEmpty();
     const currentUser = getStoredCurrentUser();
     if (!isAdmin(currentUser)) {
-      navigate('/', { replace: true });
+      navigate('/auth', { replace: true });
       return;
     }
 
@@ -217,7 +221,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   }, [toast]);
 
   useEffect(() => {
-    if (['dashboard', 'users', 'resources', 'monitor'].includes(initialTab)) {
+    if (['dashboard', 'users', 'resources', 'monitor', 'announcements'].includes(initialTab)) {
       setActiveTab(initialTab);
     }
   }, [initialTab]);
@@ -229,11 +233,6 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     if (!needle) return users;
     return users.filter((user) => `${user.name} ${user.email} ${user.provider} ${user.role}`.toLowerCase().includes(needle));
   }, [search, users]);
-
-  const handleLogout = async () => {
-    clearStoredAuth();
-    navigate('/', { replace: true });
-  };
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,6 +295,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
 
     createResource({
       title: resourceForm.title,
+      category: resourceForm.category as any,
       department: departmentLabel,
       semester: resourceForm.semester,
       subject: resourceForm.subject,
@@ -304,8 +304,66 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       uploadedByEmail: currentAdmin?.email
     });
 
-    setResourceForm({ title: '', departmentCode: '', semester: '', subject: '', driveLink: '' });
+    setResourceForm({ title: '', category: 'study_material', departmentCode: '', semester: '', subject: '', driveLink: '' });
     refreshData();
+  };
+
+  const resetAnnouncementForm = () =>
+    setAnnouncementForm({
+      title: '',
+      description: '',
+      date: new Date().toISOString().slice(0, 10),
+      department: '',
+      priority: 'normal',
+      published: true
+    });
+
+  const handleAnnouncementSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!announcementForm.title.trim() || !announcementForm.description.trim()) {
+      toast({ title: 'Missing fields', description: 'Please fill title and description.', variant: 'warning' });
+      return;
+    }
+
+    const dateIso = new Date(`${announcementForm.date}T12:00:00`).toISOString();
+
+    if (editAnnouncementId) {
+      const updated = updateAnnouncement(editAnnouncementId, {
+        title: announcementForm.title,
+        description: announcementForm.description,
+        date: dateIso,
+        department: announcementForm.department || undefined,
+        priority: announcementForm.priority,
+        published: announcementForm.published
+      });
+      if (updated) toast({ title: 'Announcement updated', description: updated.title, variant: 'success' });
+      setEditAnnouncementId(null);
+    } else {
+      const created = createAnnouncement({
+        title: announcementForm.title,
+        description: announcementForm.description,
+        date: dateIso,
+        department: announcementForm.department || undefined,
+        priority: announcementForm.priority,
+        published: announcementForm.published
+      });
+      toast({ title: 'Announcement created', description: created.title, variant: 'success' });
+    }
+
+    resetAnnouncementForm();
+    refreshData();
+  };
+
+  const startEditAnnouncement = (item: AppAnnouncement) => {
+    setEditAnnouncementId(item.id);
+    setAnnouncementForm({
+      title: item.title,
+      description: item.description,
+      date: item.date.slice(0, 10),
+      department: item.department || '',
+      priority: item.priority,
+      published: item.published
+    });
   };
 
   const renderDashboard = () => (
@@ -318,9 +376,9 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <ControlCard title="User Management" description="View, add, edit, delete and change user roles" onClick={() => setActiveTab('users')} />
-        <ControlCard title="Resource Management" description="Upload and maintain learning resources" onClick={() => setActiveTab('resources')} />
-        <ControlCard title="System Monitor" description="Track recent user/admin activity" onClick={() => setActiveTab('monitor')} />
+        <ControlCard title="User Management" description="View, add, edit, delete and change user roles" onClick={() => navigate('/admin/users')} />
+        <ControlCard title="Resource Management" description="Upload and maintain learning resources" onClick={() => navigate('/admin/resources')} />
+        <ControlCard title="System Monitor" description="Track recent user/admin activity" onClick={() => navigate('/admin/monitor')} />
       </div>
 
       <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
@@ -448,7 +506,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">Upload Resource</h3>
-        <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+        <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
           <div className="md:col-span-2 xl:col-span-2">
             <label className="block text-xs font-semibold text-slate-700 mb-1">Resource Title</label>
             <input
@@ -458,6 +516,20 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
               className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
+            <select
+              value={resourceForm.category}
+              onChange={(e) => setResourceForm({ ...resourceForm, category: e.target.value as any })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            >
+              <option value="notes">Notes</option>
+              <option value="question_paper">Question Papers</option>
+              <option value="study_material">Study Materials</option>
+            </select>
           </div>
 
           <div>
@@ -512,7 +584,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
             </select>
           </div>
 
-          <div className="md:col-span-2 xl:col-span-4">
+          <div className="md:col-span-2 xl:col-span-5">
             <label className="block text-xs font-semibold text-slate-700 mb-1">Google Drive Link</label>
             <input
               value={resourceForm.driveLink}
@@ -534,6 +606,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-700">
               <th className="py-2">Title</th>
+              <th>Type</th>
               <th>Department</th>
               <th>Semester</th>
               <th>Subject</th>
@@ -545,6 +618,9 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
             {resources.map((resource) => (
               <tr key={resource.id} className="border-b border-slate-100 text-slate-700">
                 <td className="py-3">{resource.title}</td>
+                <td className="text-xs font-semibold text-slate-600">
+                  {(resource as any).category === 'notes' ? 'Notes' : (resource as any).category === 'question_paper' ? 'Question Papers' : 'Study Materials'}
+                </td>
                 <td>{resource.department}</td>
                 <td>{resource.semester}</td>
                 <td>{resource.subject}</td>
@@ -569,6 +645,182 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     </div>
   );
 
+  const renderAnnouncements = () => (
+    <div className="space-y-6">
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">
+            {editAnnouncementId ? 'Edit Announcement' : 'Create Announcement'}
+          </h3>
+          {editAnnouncementId && (
+            <button
+              onClick={() => {
+                setEditAnnouncementId(null);
+                setAnnouncementForm({
+                  title: '',
+                  description: '',
+                  date: new Date().toISOString().slice(0, 10),
+                  department: '',
+                  priority: 'normal',
+                  published: true
+                });
+              }}
+              className="rounded-lg border border-slate-300 bg-white/60 px-3 py-2 text-sm text-slate-700"
+            >
+              Cancel edit
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleAnnouncementSubmit} className="grid grid-cols-1 lg:grid-cols-6 gap-3">
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Title</label>
+            <input
+              value={announcementForm.title}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              placeholder="Announcement title"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+            <input
+              type="date"
+              value={announcementForm.date}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, date: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Priority</label>
+            <select
+              value={announcementForm.priority}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, priority: e.target.value as any })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+            >
+              <option value="normal">Normal</option>
+              <option value="important">Important</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Department (optional)</label>
+            <input
+              value={announcementForm.department}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, department: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              placeholder="e.g., CSE"
+            />
+          </div>
+
+          <div className="lg:col-span-6">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Description</label>
+            <textarea
+              value={announcementForm.description}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, description: e.target.value })}
+              className="w-full min-h-[110px] rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+              placeholder="Write the announcement..."
+              required
+            />
+          </div>
+
+          <label className="lg:col-span-4 inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={announcementForm.published}
+              onChange={(e) => setAnnouncementForm({ ...announcementForm, published: e.target.checked })}
+              className="rounded border-slate-300"
+            />
+            Publish immediately
+          </label>
+
+          <button type="submit" className="lg:col-span-2 rounded-lg bg-slate-900 text-white px-3 py-2 flex items-center justify-center gap-2">
+            <Plus size={16} /> {editAnnouncementId ? 'Save Changes' : 'Create Announcement'}
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 overflow-x-auto">
+        <table className="w-full text-sm min-w-[860px]">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-slate-700">
+              <th className="py-2">Title</th>
+              <th>Date</th>
+              <th>Priority</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {announcements.map((item) => (
+              <tr key={item.id} className="border-b border-slate-100 text-slate-700 align-top">
+                <td className="py-3">
+                  <div className="font-medium text-slate-900">{item.title}</div>
+                  <div className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{item.description.slice(0, 140)}{item.description.length > 140 ? '…' : ''}</div>
+                </td>
+                <td className="py-3 whitespace-nowrap">{new Date(item.date).toLocaleDateString()}</td>
+                <td className="py-3 whitespace-nowrap">
+                  {item.priority === 'important' ? (
+                    <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">Important</span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs font-semibold">Normal</span>
+                  )}
+                </td>
+                <td className="py-3 whitespace-nowrap">{item.department || '—'}</td>
+                <td className="py-3 whitespace-nowrap">
+                  {item.published ? (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-xs font-semibold">Published</span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs font-semibold">Draft</span>
+                  )}
+                </td>
+                <td className="py-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => startEditAnnouncement(item)}
+                      className="px-2 py-1 rounded bg-slate-100 text-slate-800"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAnnouncementPublished(item.id, !item.published);
+                        refreshData();
+                      }}
+                      className="px-2 py-1 rounded bg-indigo-100 text-indigo-800"
+                    >
+                      {item.published ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!confirm('Delete this announcement?')) return;
+                        deleteLocalAnnouncement(item.id);
+                        if (editAnnouncementId === item.id) {
+                          setEditAnnouncementId(null);
+                        }
+                        refreshData();
+                      }}
+                      className="px-2 py-1 rounded bg-red-100 text-red-700 inline-flex items-center gap-1"
+                    >
+                      <Trash2 size={14} /> Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {announcements.length === 0 && <p className="text-sm text-slate-600 py-4">No announcements yet.</p>}
+      </section>
+    </div>
+  );
+
   const renderMonitor = () => (
     <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
       <h3 className="text-lg font-semibold text-slate-800 mb-4">System Monitor</h3>
@@ -584,61 +836,33 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const renderContent = () => {
     if (activeTab === 'users') return renderUsers();
     if (activeTab === 'resources') return renderResources();
+    if (activeTab === 'announcements') return renderAnnouncements();
     if (activeTab === 'monitor') return renderMonitor();
     return renderDashboard();
   };
 
+  const headerTitle =
+    activeTab === 'users'
+      ? 'User Management'
+      : activeTab === 'resources'
+        ? 'Resource Management'
+        : activeTab === 'monitor'
+          ? 'System Monitor'
+          : activeTab === 'announcements'
+            ? 'Announcements'
+            : 'Admin Dashboard';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
-      <div className="flex">
-        <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900/90 text-white backdrop-blur-xl transform transition-transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <div className="flex items-center gap-2 font-semibold">
-              <Shield size={18} /> Lazy Notez Admin
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden"><X size={18} /></button>
-          </div>
-          <nav className="p-4 space-y-2">
-            {dashboardTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setSidebarOpen(false);
-                    navigate(tab.id === 'dashboard' ? '/admin/dashboard' : `/admin/${tab.id}`);
-                  }}
-                  className={`w-full px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition ${activeTab === tab.id ? 'bg-white/20' : 'hover:bg-white/10'}`}
-                >
-                  <Icon size={16} /> {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-          <div className="p-4 border-t border-white/10 mt-auto">
-            <button onClick={handleLogout} className="w-full px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 flex items-center justify-center gap-2">
-              <LogOut size={16} /> Logout
-            </button>
-          </div>
-        </aside>
-
-        <main className="flex-1 lg:ml-72 p-4 md:p-6">
-          <header className="mb-6 rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-4 flex items-center justify-between">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden rounded-lg border border-slate-300 p-2 text-slate-700">
-              <Menu size={18} />
-            </button>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-              <p className="text-sm text-slate-600">Welcome, {currentAdmin?.name}</p>
-            </div>
-            <button onClick={refreshData} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">Refresh</button>
-          </header>
-
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <AdminShell
+      title={headerTitle}
+      actions={
+        <button onClick={refreshData} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">
+          Refresh
+        </button>
+      }
+    >
+      {renderContent()}
+    </AdminShell>
   );
 }
 

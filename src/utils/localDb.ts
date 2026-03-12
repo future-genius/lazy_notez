@@ -21,6 +21,7 @@ export type AppUser = {
 export type AppResource = {
   id: string;
   title: string;
+  category?: 'notes' | 'question_paper' | 'study_material';
   department: string;
   semester: string;
   subject: string;
@@ -83,7 +84,11 @@ export function saveUsers(users: AppUser[]) {
 }
 
 export function getResources(): AppResource[] {
-  return parseJSON<AppResource[]>(localStorage.getItem(RESOURCES_KEY), []);
+  const resources = parseJSON<AppResource[]>(localStorage.getItem(RESOURCES_KEY), []);
+  return resources.map((resource) => ({
+    ...resource,
+    category: resource.category || 'study_material'
+  }));
 }
 
 export function saveResources(resources: AppResource[]) {
@@ -226,6 +231,7 @@ export function getRecentActivities(limit = 20) {
 
 export function createResource(input: {
   title: string;
+  category?: AppResource['category'];
   department: string;
   semester: string;
   subject: string;
@@ -237,6 +243,7 @@ export function createResource(input: {
   const next: AppResource = {
     id: createId('resource'),
     title: input.title.trim(),
+    category: input.category || 'study_material',
     department: input.department.trim(),
     semester: input.semester.trim(),
     subject: input.subject.trim(),
@@ -374,6 +381,7 @@ export function seedResourcesIfEmpty() {
     {
       id: createId('resource'),
       title: 'Data Structures - Unit 1 Notes',
+      category: 'notes',
       department: 'Computer Science and Engineering',
       semester: 'III',
       subject: 'Data Structures',
@@ -386,6 +394,7 @@ export function seedResourcesIfEmpty() {
     {
       id: createId('resource'),
       title: 'Signals and Systems Formula Sheet',
+      category: 'study_material',
       department: 'Electronics and Communication Engineering',
       semester: 'IV',
       subject: 'Signals and Systems',

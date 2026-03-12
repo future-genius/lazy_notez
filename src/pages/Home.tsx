@@ -40,7 +40,7 @@ export default function Home({ isLoggedIn, onLogin, user, onLogout }: HomeProps)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 flex flex-col">
       {/* Top Bar */}
-      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14 lg:top-0' : 'top-0'} z-40 border-b border-gray-100`}>
+      <div className={`flex justify-between items-center p-3 sm:p-4 bg-white shadow-sm sticky ${isLoggedIn ? 'top-14 lg:top-16' : 'top-0'} z-40 border-b border-gray-100`}>
         <div className="w-8 sm:w-10" />
 
         <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">Lazy Notez</h1>

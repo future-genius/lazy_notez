@@ -1,13 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, ExternalLink } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { getStoredCurrentUser } from '../utils/authSession';
 import { AppResource, getResources, incrementDownload, seedResourcesIfEmpty } from '../utils/localDb';
 import SearchBar from '../components/ui/SearchBar';
 
 type SortOption = 'name' | 'date' | 'most_downloaded';
+type CategoryOption = '' | 'notes' | 'question_paper' | 'study_material';
+
+const CATEGORY_LABELS: Record<Exclude<CategoryOption, ''>, string> = {
+  notes: 'Notes',
+  question_paper: 'Question Papers',
+  study_material: 'Study Materials'
+};
 
 function ResourcesSubpage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<CategoryOption>(() => (searchParams.get('category') as CategoryOption) || '');
   const [department, setDepartment] = useState('');
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('');
@@ -18,6 +28,11 @@ function ResourcesSubpage() {
     seedResourcesIfEmpty();
     setResourceList(getResources());
   }, []);
+
+  useEffect(() => {
+    const fromUrl = (searchParams.get('category') as CategoryOption) || '';
+    setCategory(fromUrl);
+  }, [searchParams]);
 
   const user = getStoredCurrentUser();
   const resources = resourceList;
@@ -41,6 +56,7 @@ function ResourcesSubpage() {
   const filteredResources = useMemo(() => {
     const filtered = resources.filter(
       (item) =>
+        (!category || (item.category || 'study_material') === category) &&
         (!department || item.department === department) &&
         (!semester || item.semester === semester) &&
         (!subject || item.subject === subject) &&
@@ -71,11 +87,33 @@ function ResourcesSubpage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100 px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5 mb-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Resources</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">
+            Resources{category ? ` • ${CATEGORY_LABELS[category]}` : ''}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
             <div className="md:col-span-2 xl:col-span-2">
               <SearchBar value={query} onChange={setQuery} placeholder="Search by title, subject, department..." />
             </div>
+
+            <select
+              value={category}
+              onChange={(e) => {
+                const next = e.target.value as CategoryOption;
+                setCategory(next);
+                setSearchParams((prev) => {
+                  const updated = new URLSearchParams(prev);
+                  if (next) updated.set('category', next);
+                  else updated.delete('category');
+                  return updated;
+                });
+              }}
+              className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2"
+            >
+              <option value="">All Types</option>
+              <option value="notes">Notes</option>
+              <option value="question_paper">Question Papers</option>
+              <option value="study_material">Study Materials</option>
+            </select>
             <select
               value={department}
               onChange={(e) => {

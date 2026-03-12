@@ -45,6 +45,15 @@ export const validateCreateResource = [
   body('tags').optional().isArray()
 ];
 
+export const validateCreateAnnouncement = [
+  body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title required'),
+  body('description').trim().isLength({ min: 1, max: 5000 }).withMessage('Description required'),
+  body('date').optional().isISO8601().withMessage('Invalid date'),
+  body('department').optional().trim().isLength({ max: 60 }),
+  body('priority').optional().isIn(['normal', 'important']).withMessage('Invalid priority'),
+  body('published').optional().isBoolean()
+];
+
 export const validateAbout = [
   body('title').trim().isLength({ min: 1, max: 500 }).withMessage('Title required'),
   body('content').trim().isLength({ min: 1 }).withMessage('Content required')
