@@ -14,6 +14,11 @@ export const validateCsrf = (req: Request, res: Response, next: NextFunction) =>
     return next();
   }
 
+  // Admin panel key / dev bypass are header-authenticated and not CSRF targets.
+  if (req.headers['x-admin-panel-key'] || req.headers['x-admin-panel']) {
+    return next();
+  }
+
   // Only validate for state-changing requests
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
     const token = req.headers['x-csrf-token'] as string || req.body._csrf;
