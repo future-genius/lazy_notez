@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, Home, LayoutDashboard, LogOut, Megaphone, Menu, User, Users2, Wrench, X } from 'lucide-react';
+import { getStoredCurrentUser } from '../utils/authSession';
 
 type NavItem = {
   label: string;
@@ -17,6 +18,21 @@ export default function GlobalNav({ onLogout }: { onLogout?: () => Promise<void>
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatar, setAvatar] = useState<string>('');
+
+  useEffect(() => {
+    const read = () => {
+      const u = getStoredCurrentUser();
+      setAvatar(u?.avatar || '');
+    };
+
+    read();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key === 'currentUser' || e.key === 'lazyNotezUser') read();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   const items: NavItem[] = useMemo(() => {
     const base: NavItem[] = [
@@ -117,15 +133,24 @@ export default function GlobalNav({ onLogout }: { onLogout?: () => Promise<void>
             })}
           </nav>
 
-          <button
-            onClick={async () => {
-              await onLogout?.();
-              navigate('/', { replace: true });
-            }}
-            className="rounded-xl border border-red-200 bg-white/60 px-4 py-2 text-sm text-red-700 hover:bg-white/80 transition inline-flex items-center gap-2"
-          >
-            <LogOut size={16} /> Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/profile')}
+              className="w-10 h-10 rounded-xl bg-slate-900 text-white overflow-hidden shadow-sm flex items-center justify-center"
+              aria-label="Open profile"
+            >
+              {avatar ? <img src={avatar} alt="Avatar" className="w-full h-full object-cover" /> : <User size={18} />}
+            </button>
+            <button
+              onClick={async () => {
+                await onLogout?.();
+                navigate('/', { replace: true });
+              }}
+              className="rounded-xl border border-red-200 bg-white/60 px-4 py-2 text-sm text-red-700 hover:bg-white/80 transition inline-flex items-center gap-2"
+            >
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
         </div>
       </header>
     </>

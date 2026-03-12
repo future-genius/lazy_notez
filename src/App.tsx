@@ -15,6 +15,7 @@ import GlobalNav from './components/GlobalNav';
 import Announcements from './pages/Announcements';
 import Tools from './pages/Tools';
 import AdminHome from './pages/AdminHome';
+import Profile from './pages/Profile';
 
 const ADMIN_SESSION_KEY = 'lazyNotezAdmin';
 const LAST_AREA_KEY = 'lazyNotez.nav.lastArea.v1';
@@ -155,7 +156,7 @@ function App() {
           }
         />
         <Route path="/dashboard" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><Dashboard user={user as any} /></UserOnlyRoute>} />
-        <Route path="/profile" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><Dashboard user={user as any} /></UserOnlyRoute>} />
+        <Route path="/profile" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><Profile /></UserOnlyRoute>} />
         <Route path="/resources" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><ResourcesSubpage /></UserOnlyRoute>} />
         <Route path="/announcements" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><Announcements /></UserOnlyRoute>} />
         <Route path="/community" element={<UserOnlyRoute user={user} isLoggedIn={isLoggedIn}><Community /></UserOnlyRoute>} />

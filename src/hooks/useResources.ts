@@ -11,10 +11,12 @@ export function useResources() {
   const [items, setItems] = useState<AppResource[]>(() => getResources());
   const [source, setSource] = useState<'api' | 'local'>(apiBase ? 'api' : 'local');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
   const refresh = useMemo(() => {
     return async () => {
       setLoading(true);
+      setError('');
       if (!apiBase) seedResourcesIfEmpty();
 
       if (apiBase) {
@@ -25,7 +27,11 @@ export function useResources() {
           setLoading(false);
           return;
         } catch {
-          // ignore
+          setItems([]);
+          setSource('api');
+          setError('Unable to load resources from server.');
+          setLoading(false);
+          return;
         }
       }
 
@@ -70,5 +76,5 @@ export function useResources() {
     };
   }, [apiBase, refresh, socketUrl]);
 
-  return { items, source, loading, refresh };
+  return { items, source, loading, error, refresh };
 }

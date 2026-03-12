@@ -24,7 +24,7 @@ function ResourcesSubpage() {
   const [semester, setSemester] = useState('');
   const [subject, setSubject] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date');
-  const { items: resourceList, source } = useResources();
+  const { items: resourceList, source, error, loading } = useResources();
 
   useEffect(() => {
     const fromUrl = (searchParams.get('category') as CategoryOption) || '';
@@ -169,13 +169,26 @@ function ResourcesSubpage() {
           </div>
         </section>
 
-        {filteredResources.length === 0 && (
+        {error && (
+          <div className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-6 text-slate-700">
+            <p className="font-semibold text-slate-900">Resources unavailable</p>
+            <p className="text-sm text-slate-600 mt-1">{error}</p>
+          </div>
+        )}
+
+        {!error && loading && (
+          <div className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-6 text-slate-600">
+            Loading resources...
+          </div>
+        )}
+
+        {!error && !loading && filteredResources.length === 0 && (
           <div className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-8 text-center text-slate-600">
             No resources found for selected filters.
           </div>
         )}
 
-        {filteredResources.length > 0 && (
+        {!error && !loading && filteredResources.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredResources.map((resource) => (
               <article key={resource.id} className="rounded-2xl border border-white/30 bg-white/25 backdrop-blur-xl p-5 hover:shadow-lg transition">

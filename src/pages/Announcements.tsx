@@ -3,7 +3,7 @@ import { Megaphone } from 'lucide-react';
 import { useAnnouncements } from '../hooks/useAnnouncements';
 
 export default function Announcements() {
-  const { items } = useAnnouncements();
+  const { items, error, loading } = useAnnouncements();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
@@ -15,12 +15,26 @@ export default function Announcements() {
           <p className="text-sm text-slate-600 mt-1">Latest updates posted by admin.</p>
         </header>
 
-        {items.length === 0 ? (
+        {error && (
+          <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-8 text-center text-slate-700">
+            <p className="font-semibold text-slate-900">Announcements unavailable</p>
+            <p className="text-sm text-slate-600 mt-1">{error}</p>
+          </section>
+        )}
+
+        {!error && loading && (
+          <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-8 text-center text-slate-600">
+            Loading announcements...
+          </section>
+        )}
+
+        {!error && !loading && items.length === 0 ? (
           <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-8 text-center text-slate-600">
             No announcements yet.
           </section>
         ) : (
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          !error && !loading && (
+            <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {items.map((item) => (
               <article key={item.id} className="rounded-2xl border border-white/30 bg-white/25 backdrop-blur-xl p-5 shadow-sm hover:shadow-md transition">
                 <div className="flex items-start justify-between gap-3">
@@ -40,7 +54,8 @@ export default function Announcements() {
                 <p className="text-sm text-slate-700 mt-3 whitespace-pre-wrap">{item.description}</p>
               </article>
             ))}
-          </section>
+            </section>
+          )
         )}
       </main>
     </div>

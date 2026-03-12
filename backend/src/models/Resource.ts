@@ -8,6 +8,11 @@ export interface IResource extends Document {
   title: string;
   googleDriveUrl: string;
   uploadedByName: string;
+  uploadedByEmail?: string;
+  uploadedByUserId?: string;
+  approved: boolean;
+  approvedAt?: Date;
+  approvedBy?: mongoose.Types.ObjectId;
   uploadDate: Date;
   downloadCount: number;
   description?: string;
@@ -24,6 +29,11 @@ const ResourceSchema: Schema = new Schema<IResource>({
   title: { type: String, required: true },
   googleDriveUrl: { type: String, required: true },
   uploadedByName: { type: String, required: true },
+  uploadedByEmail: { type: String, lowercase: true, trim: true, index: true },
+  uploadedByUserId: { type: String, trim: true, index: true },
+  approved: { type: Boolean, default: true, index: true },
+  approvedAt: { type: Date },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   uploadDate: { type: Date, default: Date.now },
   downloadCount: { type: Number, default: 0 },
   description: { type: String },

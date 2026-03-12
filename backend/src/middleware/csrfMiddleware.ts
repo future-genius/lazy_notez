@@ -4,8 +4,17 @@ import { AppError } from '../utils/errors';
 
 // CSRF validation middleware
 export const validateCsrf = (req: Request, res: Response, next: NextFunction) => {
-  const authPathExemptions = ['/auth/login', '/auth/register', '/auth/google', '/auth/refresh', '/auth/logout'];
-  if (authPathExemptions.some((path) => req.path.startsWith(path))) {
+  const pathExemptions = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/google',
+    '/auth/refresh',
+    '/auth/logout',
+    // Public resource submissions (header-auth/cookie-less) used by the student portal
+    '/resources/submit',
+    '/resources/submissions'
+  ];
+  if (pathExemptions.some((path) => req.path.startsWith(path))) {
     return next();
   }
 

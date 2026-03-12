@@ -29,7 +29,7 @@ export async function fetchPublishedAnnouncements(): Promise<AppAnnouncement[]> 
   const apiBase = getApiBase();
   if (!apiBase) return [];
 
-  const res = await fetch(`${apiBase}/announcements?limit=50`, { credentials: 'include' });
+  const res = await fetch(`${apiBase}/announcements?limit=50`, { credentials: 'include', cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch announcements');
   const data = (await res.json()) as { announcements?: ApiAnnouncement[] };
   const announcements = data.announcements || [];
@@ -42,6 +42,7 @@ export async function fetchAdminAnnouncements(): Promise<AppAnnouncement[]> {
 
   const res = await fetch(`${apiBase}/announcements/admin?limit=200`, {
     credentials: 'include',
+    cache: 'no-store',
     headers: { ...getAdminPanelHeaders() }
   });
 
@@ -64,6 +65,7 @@ export async function createAdminAnnouncement(input: {
   const res = await fetch(`${apiBase}/announcements`, {
     method: 'POST',
     credentials: 'include',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
     body: JSON.stringify(input)
   });
@@ -86,6 +88,7 @@ export async function updateAdminAnnouncement(id: string, updates: Partial<{
   const res = await fetch(`${apiBase}/announcements/${encodeURIComponent(id)}`, {
     method: 'PUT',
     credentials: 'include',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
     body: JSON.stringify(updates)
   });
@@ -101,6 +104,7 @@ export async function setAdminAnnouncementPublished(id: string, published: boole
   const res = await fetch(`${apiBase}/announcements/${encodeURIComponent(id)}/publish`, {
     method: 'PATCH',
     credentials: 'include',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
     body: JSON.stringify({ published })
   });
@@ -116,6 +120,7 @@ export async function deleteAdminAnnouncement(id: string) {
   const res = await fetch(`${apiBase}/announcements/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     credentials: 'include',
+    cache: 'no-store',
     headers: { ...getAdminPanelHeaders() }
   });
 

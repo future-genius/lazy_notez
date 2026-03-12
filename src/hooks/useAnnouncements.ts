@@ -8,6 +8,7 @@ export function useAnnouncements(limit?: number) {
   const [items, setItems] = useState<AppAnnouncement[]>([]);
   const [source, setSource] = useState<'api' | 'local'>('local');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -18,6 +19,7 @@ export function useAnnouncements(limit?: number) {
 
     const load = async (reason?: string) => {
       setLoading(true);
+      setError('');
       const apiBase = getApiBase();
       if (!apiBase) seedAnnouncementsIfEmpty();
 
@@ -29,7 +31,14 @@ export function useAnnouncements(limit?: number) {
         }
         return;
       } catch {
-        // fall back to local
+        if (apiBase) {
+          if (!cancelled) {
+            setItems([]);
+            setSource('api');
+            setError('Unable to load announcements from server.');
+          }
+          return;
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -67,5 +76,5 @@ export function useAnnouncements(limit?: number) {
     };
   }, [limit]);
 
-  return { items, source, loading };
+  return { items, source, loading, error };
 }

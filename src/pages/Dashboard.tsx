@@ -26,7 +26,7 @@ function Dashboard({ user }: DashboardProps) {
     );
   }
 
-  const { items: preview } = useAnnouncements(3);
+  const { items: preview, error: announcementsError, loading: announcementsLoading } = useAnnouncements(3);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-cyan-50 to-indigo-100">
@@ -78,7 +78,11 @@ function Dashboard({ user }: DashboardProps) {
             </button>
           </div>
 
-          {preview.length === 0 ? (
+          {announcementsError ? (
+            <p className="text-sm text-slate-600">{announcementsError}</p>
+          ) : announcementsLoading ? (
+            <p className="text-sm text-slate-600">Loading announcements...</p>
+          ) : preview.length === 0 ? (
             <p className="text-sm text-slate-600">No announcements yet.</p>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">

@@ -19,6 +19,8 @@ export type SessionUser = {
   createdAt: string;
   username?: string;
   avatar?: string;
+  department?: string;
+  semester?: string;
   accessToken?: string;
   lastLoginAt?: string;
 };
@@ -35,6 +37,8 @@ function toSessionUser(user: AppUser): SessionUser {
     createdAt: user.createdAt,
     username: user.username,
     avatar: user.avatar,
+    department: user.department,
+    semester: user.semester,
     lastLoginAt: user.lastLoginAt
   };
 }
@@ -68,6 +72,8 @@ export function setStoredCurrentUser(user: SessionUser) {
     role: normalized.role,
     username: normalized.username,
     avatar: normalized.avatar,
+    department: normalized.department,
+    semester: normalized.semester,
     lastLoginAt: normalized.lastLoginAt || new Date().toISOString()
   });
 

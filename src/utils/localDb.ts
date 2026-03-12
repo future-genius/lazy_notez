@@ -13,6 +13,7 @@ export type AppUser = {
   username?: string;
   password?: string;
   department?: string;
+  semester?: string;
   college?: string;
   avatar?: string;
   lastLoginAt?: string;
@@ -28,8 +29,10 @@ export type AppResource = {
   driveLink: string;
   uploadedBy: string;
   uploadedByEmail?: string;
+  uploadedByUserId?: string;
   uploadedAt: string;
   downloadCount: number;
+  approved?: boolean;
 };
 
 export type ActivityType = 'login' | 'register' | 'download' | 'upload' | 'user_update' | 'user_delete' | 'user_add';
@@ -148,6 +151,7 @@ export function upsertUser(partial: Partial<AppUser> & { email: string; name: st
     username: partial.username || (existingIndex >= 0 ? users[existingIndex].username : undefined),
     password: partial.password || (existingIndex >= 0 ? users[existingIndex].password : undefined),
     department: partial.department || (existingIndex >= 0 ? users[existingIndex].department : undefined),
+    semester: partial.semester || (existingIndex >= 0 ? users[existingIndex].semester : undefined),
     college: partial.college || (existingIndex >= 0 ? users[existingIndex].college : undefined),
     avatar: partial.avatar || (existingIndex >= 0 ? users[existingIndex].avatar : undefined),
     lastLoginAt: partial.lastLoginAt || (existingIndex >= 0 ? users[existingIndex].lastLoginAt : undefined)
@@ -238,6 +242,8 @@ export function createResource(input: {
   driveLink: string;
   uploadedBy: string;
   uploadedByEmail?: string;
+  uploadedByUserId?: string;
+  approved?: boolean;
 }) {
   const resources = getResources();
   const next: AppResource = {
@@ -250,8 +256,10 @@ export function createResource(input: {
     driveLink: input.driveLink.trim(),
     uploadedBy: input.uploadedBy.trim(),
     uploadedByEmail: input.uploadedByEmail,
+    uploadedByUserId: input.uploadedByUserId,
     uploadedAt: nowIso(),
-    downloadCount: 0
+    downloadCount: 0,
+    approved: typeof input.approved === 'boolean' ? input.approved : true
   };
   resources.unshift(next);
   saveResources(resources);
@@ -267,6 +275,30 @@ export function deleteResource(resourceId: string, actorEmail?: string) {
   if (target) {
     logActivity('user_update', `Resource deleted: ${target.title}`, actorEmail, target.id);
   }
+}
+
+export function updateResource(resourceId: string, updates: Partial<Omit<AppResource, 'id' | 'uploadedAt' | 'downloadCount'>>, actorEmail?: string) {
+  const resources = getResources();
+  const index = resources.findIndex((item) => item.id === resourceId);
+  if (index < 0) return null;
+
+  const next: AppResource = {
+    ...resources[index],
+    ...updates,
+    title: (updates.title ?? resources[index].title).trim(),
+    category: (updates.category ?? resources[index].category) || 'study_material',
+    department: (updates.department ?? resources[index].department).trim(),
+    semester: (updates.semester ?? resources[index].semester).trim(),
+    subject: (updates.subject ?? resources[index].subject).trim(),
+    driveLink: (updates.driveLink ?? resources[index].driveLink).trim(),
+    uploadedBy: (updates.uploadedBy ?? resources[index].uploadedBy).trim(),
+    uploadedByEmail: updates.uploadedByEmail ?? resources[index].uploadedByEmail
+  };
+
+  resources[index] = next;
+  saveResources(resources);
+  logActivity('user_update', `Resource updated: ${next.title}`, actorEmail, next.id);
+  return next;
 }
 
 export function updateUserRole(userId: string, role: UserRole, actorEmail?: string) {

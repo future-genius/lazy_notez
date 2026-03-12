@@ -10,6 +10,9 @@ type ApiResource = {
   subject: string;
   googleDriveUrl: string;
   uploadedByName: string;
+  uploadedByEmail?: string;
+  uploadedByUserId?: string;
+  approved?: boolean;
   uploadDate: string;
   downloadCount: number;
   createdAt: string;
@@ -25,9 +28,11 @@ const toAppResource = (r: ApiResource): AppResource => ({
   subject: r.subject,
   driveLink: r.googleDriveUrl,
   uploadedBy: r.uploadedByName,
-  uploadedByEmail: undefined,
+  uploadedByEmail: r.uploadedByEmail,
+  uploadedByUserId: r.uploadedByUserId,
   uploadedAt: r.uploadDate || r.createdAt,
-  downloadCount: r.downloadCount || 0
+  downloadCount: r.downloadCount || 0,
+  approved: typeof r.approved === 'boolean' ? r.approved : true
 });
 
 export async function fetchResources(params?: {
@@ -57,10 +62,45 @@ export async function fetchResources(params?: {
   else if (params?.sortBy === 'most_downloaded') q.set('sortBy', 'most_downloaded');
   else q.set('sortBy', 'recent');
 
-  const res = await fetch(`${apiBase}/resources?${q.toString()}`, { credentials: 'include' });
+  const res = await fetch(`${apiBase}/resources?${q.toString()}`, { credentials: 'include', cache: 'no-store' });
   if (!res.ok) throw new Error('Failed to fetch resources');
   const data = (await res.json()) as { resources?: ApiResource[] };
   return (data.resources || []).map(toAppResource);
+}
+
+export async function fetchAdminResources(params?: { approved?: 'true' | 'false' | '' }) {
+  const apiBase = getApiBase();
+  if (!apiBase) return [];
+
+  const q = new URLSearchParams();
+  q.set('limit', '500');
+  if (params?.approved) q.set('approved', params.approved);
+
+  const res = await fetch(`${apiBase}/resources/admin?${q.toString()}`, {
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { ...getAdminPanelHeaders() }
+  });
+
+  if (!res.ok) throw new Error('Failed to fetch admin resources');
+  const data = (await res.json()) as { resources?: ApiResource[] };
+  return (data.resources || []).map(toAppResource);
+}
+
+export async function setAdminResourceApproved(id: string, approved: boolean) {
+  const apiBase = getApiBase();
+  if (!apiBase) throw new Error('API base not configured');
+
+  const res = await fetch(`${apiBase}/resources/${encodeURIComponent(id)}/approve`, {
+    method: 'PATCH',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
+    body: JSON.stringify({ approved })
+  });
+
+  if (!res.ok) throw new Error('Failed to approve resource');
+  return toAppResource((await res.json()) as ApiResource);
 }
 
 export async function createAdminResource(input: {
@@ -71,6 +111,8 @@ export async function createAdminResource(input: {
   subject: string;
   googleDriveUrl: string;
   uploadedByName: string;
+  uploadedByEmail?: string;
+  uploadedByUserId?: string;
 }) {
   const apiBase = getApiBase();
   if (!apiBase) throw new Error('API base not configured');
@@ -78,6 +120,7 @@ export async function createAdminResource(input: {
   const res = await fetch(`${apiBase}/resources`, {
     method: 'POST',
     credentials: 'include',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
     body: JSON.stringify(input)
   });
@@ -93,10 +136,40 @@ export async function deleteAdminResource(id: string) {
   const res = await fetch(`${apiBase}/resources/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     credentials: 'include',
+    cache: 'no-store',
     headers: { ...getAdminPanelHeaders() }
   });
 
   if (!res.ok) throw new Error('Failed to delete resource');
+}
+
+export async function updateAdminResource(
+  id: string,
+  updates: Partial<{
+    title: string;
+    category: 'notes' | 'question_paper' | 'study_material';
+    department: string;
+    semester: string;
+    subject: string;
+    googleDriveUrl: string;
+    uploadedByName: string;
+    uploadedByEmail?: string;
+    uploadedByUserId?: string;
+  }>
+) {
+  const apiBase = getApiBase();
+  if (!apiBase) throw new Error('API base not configured');
+
+  const res = await fetch(`${apiBase}/resources/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', ...getAdminPanelHeaders() },
+    body: JSON.stringify(updates)
+  });
+
+  if (!res.ok) throw new Error('Failed to update resource');
+  return toAppResource((await res.json()) as ApiResource);
 }
 
 export async function trackDownload(resourceId: string) {
@@ -105,7 +178,8 @@ export async function trackDownload(resourceId: string) {
 
   const res = await fetch(`${apiBase}/resources/${encodeURIComponent(resourceId)}/download`, {
     method: 'POST',
-    credentials: 'include'
+    credentials: 'include',
+    cache: 'no-store'
   });
   if (!res.ok) return null;
   return (await res.json()) as { downloadCount: number; googleDriveUrl: string };

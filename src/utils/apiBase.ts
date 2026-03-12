@@ -1,7 +1,9 @@
 export function getApiBase() {
   const raw = (import.meta as any).env?.VITE_API_BASE as string | undefined;
   if (!raw) return '';
-  return raw.replace(/\/+$/, '');
+  const trimmed = raw.replace(/\/+$/, '');
+  if (trimmed.toLowerCase().endsWith('/api')) return trimmed;
+  return `${trimmed}/api`;
 }
 
 export function getSocketUrl() {
@@ -19,4 +21,3 @@ export function getAdminPanelHeaders() {
 
   return headers;
 }
-

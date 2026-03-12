@@ -19,6 +19,7 @@ import {
   getStats,
   getUsers,
   seedResourcesIfEmpty,
+  updateResource,
   updateUser,
   updateUserRole
 } from '../utils/localDb';
@@ -40,78 +41,13 @@ import {
   updateAdminAnnouncement
 } from '../utils/announcementsApi';
 import { getApiBase } from '../utils/apiBase';
-import { createAdminResource, deleteAdminResource, fetchResources } from '../utils/resourcesApi';
+import { createAdminResource, deleteAdminResource, fetchAdminResources, setAdminResourceApproved, updateAdminResource } from '../utils/resourcesApi';
+import { DEPARTMENTS, SEMESTERS, getSubjectOptions } from '../utils/academics';
 
 type AdminTab = 'dashboard' | 'users' | 'resources' | 'announcements' | 'monitor' | 'communities' | 'feedback' | 'settings';
 
 interface AdminDashboardProps {
   initialTab?: AdminTab;
-}
-
-const DEPARTMENTS: { code: string; label: string }[] = [
-  { code: 'CSE', label: 'Computer Science and Engineering' },
-  { code: 'ECE', label: 'Electronics and Communication Engineering' },
-  { code: 'IT', label: 'Information Technology' },
-  { code: 'AIDS', label: 'Artificial Intelligence and Data Science' },
-  { code: 'MECH', label: 'Mechanical Engineering' },
-  { code: 'CIVIL', label: 'Civil Engineering' },
-  { code: 'EEE', label: 'Electrical and Electronics Engineering' },
-  { code: 'EIE', label: 'Electronics and Instrumentation Engineering' },
-  { code: 'AGRI', label: 'Agricultural Engineering' },
-  { code: 'CYBERSECURITY', label: 'Cyber Security' },
-  { code: 'MDE', label: 'Mechatronics and Design Engineering' }
-];
-
-const SEMESTERS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'] as const;
-
-const COMMON_SUBJECTS: Record<(typeof SEMESTERS)[number], string[]> = {
-  I: ['Engineering Mathematics I', 'Engineering Physics', 'Engineering Chemistry', 'Programming Fundamentals', 'Basic Electrical Engineering', 'Engineering Graphics'],
-  II: ['Engineering Mathematics II', 'Physics for Computing', 'Environmental Science', 'Data Structures Basics', 'Digital Fundamentals', 'Professional Communication'],
-  III: ['Engineering Mathematics III', 'Data Structures', 'Object Oriented Programming', 'Computer Organization', 'Discrete Mathematics'],
-  IV: ['Probability & Statistics', 'Database Management Systems', 'Operating Systems', 'Computer Networks', 'Design and Analysis of Algorithms'],
-  V: ['Software Engineering', 'Web Technologies', 'Machine Learning', 'Professional Elective I'],
-  VI: ['Cloud Computing', 'Distributed Systems', 'Compiler Design', 'Information Security', 'Professional Elective II'],
-  VII: ['Mobile Application Development', 'Big Data Analytics', 'Cyber Security', 'Professional Elective III', 'Project Work I'],
-  VIII: ['Project Work II', 'Internship / Seminar', 'Professional Elective IV']
-};
-
-const DEPARTMENT_SUBJECTS: Record<string, Partial<typeof COMMON_SUBJECTS>> = {
-  CSE: {
-    III: ['Data Structures', 'Discrete Mathematics', 'Digital Logic Design', 'Object Oriented Programming (Java)'],
-    IV: ['Database Management Systems', 'Operating Systems', 'Computer Networks', 'Design and Analysis of Algorithms'],
-    V: ['Software Engineering', 'Web Technologies', 'Machine Learning', 'Computer Graphics'],
-    VI: ['Cloud Computing', 'Compiler Design', 'Distributed Systems', 'Information Security'],
-    VII: ['Mobile Application Development', 'Big Data Analytics', 'Cyber Security', 'DevOps']
-  },
-  ECE: {
-    III: ['Signals and Systems', 'Analog Circuits', 'Digital Electronics', 'Network Analysis'],
-    IV: ['Communication Systems', 'Microprocessors', 'Electromagnetic Fields', 'Linear Integrated Circuits'],
-    V: ['Digital Signal Processing', 'VLSI Design', 'Control Systems', 'Embedded Systems'],
-    VI: ['Wireless Communication', 'Antenna and Wave Propagation', 'Digital Communication', 'IoT Systems'],
-    VII: ['RF Engineering', 'Optical Communication', 'Satellite Communication', 'Project Work I']
-  },
-  IT: {
-    III: ['Data Structures', 'Discrete Mathematics', 'Object Oriented Programming', 'Computer Organization'],
-    IV: ['Database Management Systems', 'Operating Systems', 'Computer Networks', 'Algorithms'],
-    V: ['Web Technologies', 'Software Engineering', 'Data Mining', 'Professional Elective I'],
-    VI: ['Cloud Computing', 'Information Security', 'Distributed Systems', 'Professional Elective II'],
-    VII: ['Mobile Application Development', 'Big Data Analytics', 'Project Work I', 'Professional Elective III']
-  },
-  AIDS: {
-    III: ['Data Structures', 'Linear Algebra', 'Python for Data Science', 'Probability Basics'],
-    IV: ['Machine Learning', 'Database Management Systems', 'Statistics for AI', 'Data Visualization'],
-    V: ['Deep Learning', 'Natural Language Processing', 'Data Mining', 'Professional Elective I'],
-    VI: ['Computer Vision', 'Big Data Analytics', 'Cloud Computing', 'Professional Elective II'],
-    VII: ['MLOps', 'AI Ethics', 'Project Work I', 'Professional Elective III']
-  }
-};
-
-function getSubjectOptions(departmentCode: string, semester: string) {
-  const sem = semester as (typeof SEMESTERS)[number];
-  if (!sem) return [];
-  const dept = DEPARTMENT_SUBJECTS[departmentCode]?.[sem];
-  const base = COMMON_SUBJECTS[sem] || [];
-  return Array.from(new Set([...(dept || []), ...base]));
 }
 
 function isAdmin(user: any) {
@@ -136,6 +72,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     subject: '',
     driveLink: ''
   });
+  const [editResourceId, setEditResourceId] = useState<string | null>(null);
   const [announcementForm, setAnnouncementForm] = useState({
     title: '',
     description: '',
@@ -155,7 +92,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     setUsers(getUsers());
     if (apiBase) {
       try {
-        const remoteResources = await fetchResources({ limit: 500 });
+        const remoteResources = await fetchAdminResources();
         setResources(remoteResources);
       } catch {
         setResources(getResources());
@@ -177,8 +114,10 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   };
 
   useEffect(() => {
-    seedResourcesIfEmpty();
-    seedAnnouncementsIfEmpty();
+    if (!apiBase) {
+      seedResourcesIfEmpty();
+      seedAnnouncementsIfEmpty();
+    }
     const currentUser = getStoredCurrentUser();
     if (!isAdmin(currentUser)) {
       navigate('/auth', { replace: true });
@@ -324,31 +263,67 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
     (async () => {
       try {
         if (apiBase) {
-          await createAdminResource({
+          if (editResourceId) {
+            await updateAdminResource(editResourceId, {
+              title: resourceForm.title,
+              category: resourceForm.category as any,
+              department: departmentLabel,
+              semester: resourceForm.semester,
+              subject: resourceForm.subject,
+              googleDriveUrl: resourceForm.driveLink,
+              uploadedByName: currentAdmin?.name || 'Admin',
+              uploadedByEmail: currentAdmin?.email,
+              uploadedByUserId: currentAdmin?.id
+            });
+            toast({ title: 'Resource updated', description: 'Synced to server.', variant: 'success' });
+          } else {
+            await createAdminResource({
             title: resourceForm.title,
             category: resourceForm.category as any,
             department: departmentLabel,
             semester: resourceForm.semester,
             subject: resourceForm.subject,
             googleDriveUrl: resourceForm.driveLink,
-            uploadedByName: currentAdmin?.name || 'Admin'
+            uploadedByName: currentAdmin?.name || 'Admin',
+            uploadedByEmail: currentAdmin?.email,
+            uploadedByUserId: currentAdmin?.id
           });
-          toast({ title: 'Resource uploaded', description: 'Synced to server.', variant: 'success' });
+            toast({ title: 'Resource uploaded', description: 'Synced to server.', variant: 'success' });
+          }
         } else {
-          createResource({
-            title: resourceForm.title,
-            category: resourceForm.category as any,
-            department: departmentLabel,
-            semester: resourceForm.semester,
-            subject: resourceForm.subject,
-            driveLink: resourceForm.driveLink,
-            uploadedBy: currentAdmin?.name || 'Admin',
-            uploadedByEmail: currentAdmin?.email
-          });
-          toast({ title: 'Resource uploaded', description: 'Saved locally.', variant: 'success' });
+          if (editResourceId) {
+            updateResource(
+              editResourceId,
+              {
+                title: resourceForm.title,
+                category: resourceForm.category as any,
+                department: departmentLabel,
+                semester: resourceForm.semester,
+                subject: resourceForm.subject,
+                driveLink: resourceForm.driveLink,
+                uploadedBy: currentAdmin?.name || 'Admin',
+                uploadedByEmail: currentAdmin?.email
+              },
+              currentAdmin?.email
+            );
+            toast({ title: 'Resource updated', description: 'Saved locally.', variant: 'success' });
+          } else {
+            createResource({
+              title: resourceForm.title,
+              category: resourceForm.category as any,
+              department: departmentLabel,
+              semester: resourceForm.semester,
+              subject: resourceForm.subject,
+              driveLink: resourceForm.driveLink,
+              uploadedBy: currentAdmin?.name || 'Admin',
+              uploadedByEmail: currentAdmin?.email
+            });
+            toast({ title: 'Resource uploaded', description: 'Saved locally.', variant: 'success' });
+          }
         }
 
         setResourceForm({ title: '', category: 'study_material', departmentCode: '', semester: '', subject: '', driveLink: '' });
+        setEditResourceId(null);
         refreshData();
       } catch (error: any) {
         toast({ title: 'Upload failed', description: error?.message || 'Please try again.', variant: 'error' });
@@ -584,7 +559,20 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
   const renderResources = () => (
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl p-5">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">Upload Resource</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-semibold text-slate-800">{editResourceId ? 'Edit Resource' : 'Upload Resource'}</h3>
+          {editResourceId && (
+            <button
+              onClick={() => {
+                setEditResourceId(null);
+                setResourceForm({ title: '', category: 'study_material', departmentCode: '', semester: '', subject: '', driveLink: '' });
+              }}
+              className="rounded-lg border border-slate-300 bg-white/60 px-3 py-2 text-sm text-slate-700"
+            >
+              Cancel edit
+            </button>
+          )}
+        </div>
         <form onSubmit={handleResourceUpload} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3">
           <div className="md:col-span-2 xl:col-span-2">
             <label className="block text-xs font-semibold text-slate-700 mb-1">Resource Title</label>
@@ -689,6 +677,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
               <th>Department</th>
               <th>Semester</th>
               <th>Subject</th>
+              <th>Status</th>
               <th>Downloads</th>
               <th>Actions</th>
             </tr>
@@ -703,8 +692,50 @@ export default function AdminDashboard({ initialTab = 'dashboard' }: AdminDashbo
                 <td>{resource.department}</td>
                 <td>{resource.semester}</td>
                 <td>{resource.subject}</td>
+                <td className="text-xs">
+                  {(resource as any).approved === false ? (
+                    <span className="rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 font-semibold">Pending</span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 font-semibold">Approved</span>
+                  )}
+                </td>
                 <td>{resource.downloadCount}</td>
                 <td>
+                  <button
+                    onClick={() => {
+                      const deptCode = DEPARTMENTS.find((d) => d.label === resource.department)?.code || resource.department;
+                      setEditResourceId(resource.id);
+                      setResourceForm({
+                        title: resource.title,
+                        category: ((resource as any).category || 'study_material') as any,
+                        departmentCode: deptCode,
+                        semester: resource.semester,
+                        subject: resource.subject,
+                        driveLink: (resource as any).driveLink || (resource as any).googleDriveUrl || ''
+                      });
+                    }}
+                    className="mr-2 px-2 py-1 rounded bg-slate-100 text-slate-800"
+                  >
+                    Edit
+                  </button>
+                  {apiBase && (
+                    <button
+                      onClick={() => {
+                        (async () => {
+                          try {
+                            const nextApproved = (resource as any).approved === false;
+                            await setAdminResourceApproved(resource.id, nextApproved);
+                            refreshData();
+                          } catch (error: any) {
+                            toast({ title: 'Approve failed', description: error?.message || 'Please try again.', variant: 'error' });
+                          }
+                        })();
+                      }}
+                      className="mr-2 px-2 py-1 rounded bg-indigo-100 text-indigo-800"
+                    >
+                      {(resource as any).approved === false ? 'Approve' : 'Unapprove'}
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       (async () => {
